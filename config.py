@@ -11,7 +11,8 @@ class Mode(Enum):
 class Paths:
     DATASET = "RETINA"
     CHECKPOINT_PATH = "./ckpt"
-
+    PATH_TO_IMAGES_FIRST = "./data/retina_dataset/fundus"
+    PATH_TO_IMAGES_SECOND = "./data/retina_dataset/experimental"
 
 class ModelConfiguration:
     IN_CHANNELS = 3

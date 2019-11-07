@@ -40,15 +40,14 @@ class GeneralTrainer:
         pass
 
     def loss_function(self, features1, features2, neg_indices, pos_indices):
-        negative_loss = self._get_negative_loss(features1, features2, neg_indices)
-        positive_loss = self._get_positive_loss(features1, features2, pos_indices)
+        negative_loss = self._get_loss(features1, features2, neg_indices)
+        positive_loss = self._get_loss(features1, features2, pos_indices)
         return positive_loss - self._cfg.NEGATIVE_LOSS_COEF * negative_loss
 
-    def _get_negative_loss(self, features1, features2, indices):
-        pass
-
-    def _get_positive_loss(self, features1, features2, indices):
-        pass
+    def _get_loss(self, features1, features2, indices):
+        features1_pos = torch.index_select(features1.view(*features1.shape[:2], -1), 2, indices[:, 0])
+        features2_pos = torch.index_select(features2.view(*features2.shape[:2], -1), 2, indices[:, 1])
+        return torch.sqrt(torch.pow(features1_pos - features2_pos, 2))
 
     def load_checkpoint(self):
         pass
