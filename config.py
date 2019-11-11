@@ -34,6 +34,7 @@ class Configuration(ModelConfiguration, Paths):
     NUM_WORKERS = 4
     SHUFFLE = {Mode.TRAIN: False, Mode.VALIDATE: False}
     USE_CUDA = True
+    NUM_POS_PAIRS = 1000
 
 
 class PredictorConfiguration(Configuration):

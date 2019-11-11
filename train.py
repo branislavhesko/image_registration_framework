@@ -34,7 +34,13 @@ class GeneralTrainer:
         average_meter = AverageMeter()
 
         for idx, inputs in self._data_loaders[Mode.TRAIN]:
-            pass
+            inputs = [inp.cuda() if self._cfg.USE_CUDA else inp for inp in inputs]
+
+            output_features_1 = self._model(inputs[0])
+            output_features_2 = self._model(inputs[1])
+
+            negative_indices = 0
+
 
     def validate(self):
         pass
@@ -48,6 +54,15 @@ class GeneralTrainer:
         features1_pos = torch.index_select(features1.view(*features1.shape[:2], -1), 2, indices[:, 0])
         features2_pos = torch.index_select(features2.view(*features2.shape[:2], -1), 2, indices[:, 1])
         return torch.sqrt(torch.pow(features1_pos - features2_pos, 2))
+
+    def _get_negative_indices(self, feats1, feats2, pos_pairs):
+        B, C, H, W = feats1.shape
+        feats1_flat = feats1.view(C, -1)
+        feats2_flat = feats2.view(C, -1)
+
+        for pos_pair in pos_pairs:
+            dist = torch.sqrt(torch.pow(feats1[pos_pair] - feats2, 2))
+            feats1_indices = torch.meshgrid([torch.arange(H), torch.arange(W)])
 
     def load_checkpoint(self):
         pass
