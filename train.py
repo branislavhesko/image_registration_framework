@@ -41,7 +41,6 @@ class GeneralTrainer:
 
             negative_indices = 0
 
-
     def validate(self):
         pass
 
@@ -50,19 +49,23 @@ class GeneralTrainer:
         positive_loss = self._get_loss(features1, features2, pos_indices)
         return positive_loss - self._cfg.NEGATIVE_LOSS_COEF * negative_loss
 
-    def _get_loss(self, features1, features2, indices):
-        features1_pos = torch.index_select(features1.view(*features1.shape[:2], -1), 2, indices[:, 0])
-        features2_pos = torch.index_select(features2.view(*features2.shape[:2], -1), 2, indices[:, 1])
+    def _get_loss(self, features1, features2, indices1, indices2):
+        features1_pos = torch.index_select(features1.view(*features1.shape[:2], -1), 2, indices1[:, 0])
+        features2_pos = torch.index_select(features2.view(*features2.shape[:2], -1), 2, indices2[:, 1])
         return torch.sqrt(torch.pow(features1_pos - features2_pos, 2))
 
-    def _get_negative_indices(self, feats1, feats2, pos_pairs):
+    def _get_negative_indices(self, feats1, feats2, pos_pairs1, pos_pairs2):
         B, C, H, W = feats1.shape
         feats1_flat = feats1.view(C, -1)
         feats2_flat = feats2.view(C, -1)
 
-        for pos_pair in pos_pairs:
-            dist = torch.sqrt(torch.pow(feats1[pos_pair] - feats2, 2))
-            feats1_indices = torch.meshgrid([torch.arange(H), torch.arange(W)])
+        for pos_pair in pos_pairs1:
+            dist = torch.sqrt(torch.pow(feats1[pos_pair] - feats2[pos_pairs2], 2))
+
+
+
+
+
 
     def load_checkpoint(self):
         pass

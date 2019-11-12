@@ -26,10 +26,11 @@ class RetinaDatasetPop2(Dataset):
         second = Image.open(self._images_second[item])
         first, second = self._transform(first, second)
         positive_pairs = self.find_positive_pairs(first, second, self._cfg.NUM_POS_PAIRS)
+        positive_pairs = torch.from_numpy(np.array(positive_pairs)).unsqueeze(dim=0)
         return (
             torch.from_numpy(np.array(first)).permute([2, 0, 1]),
             torch.from_numpy(np.array(second)).permute([2, 0, 1]),
-            torch.from_numpy(np.array(positive_pairs))
+            positive_pairs, positive_pairs
         )
 
     def load(self):

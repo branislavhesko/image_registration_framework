@@ -29,6 +29,7 @@ class Configuration(ModelConfiguration, Paths):
     MODES = [Mode.TRAIN, Mode.VALIDATE]
 
     BATCH_SIZE = {Mode.TRAIN: 1, Mode.VALIDATE: 1}
+    DISTANCE_LIMIT = 10
     EPOCHS = 1
     NEGATIVE_LOSS_COEF = 1.
     NUM_WORKERS = 4
