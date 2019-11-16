@@ -6,6 +6,7 @@ from torch.utils.data import Dataset
 import torch
 
 from config import Configuration
+from utils.transforms import flatten
 
 
 class RetinaDatasetPop2(Dataset):
@@ -17,6 +18,7 @@ class RetinaDatasetPop2(Dataset):
         self._images_second = []
         self._cfg = cfg
         self._transform = transform
+        self.load()
 
     def __len__(self):
         return len(self._images_first)
@@ -25,12 +27,13 @@ class RetinaDatasetPop2(Dataset):
         first = Image.open(self._images_first[item])
         second = Image.open(self._images_second[item])
         first, second = self._transform(first, second)
+        image_width = max(np.array(first).shape[1], np.array(second).shape[1])
         positive_pairs = self.find_positive_pairs(first, second, self._cfg.NUM_POS_PAIRS)
-        positive_pairs = torch.from_numpy(np.array(positive_pairs)).unsqueeze(dim=0)
+        positive_pairs = flatten(torch.from_numpy(np.array(positive_pairs)), image_width)
         return (
             torch.from_numpy(np.array(first)).permute([2, 0, 1]),
             torch.from_numpy(np.array(second)).permute([2, 0, 1]),
-            positive_pairs, positive_pairs
+            torch.cat([positive_pairs.unsqueeze(dim=1), positive_pairs.unsqueeze(dim=1)], dim=1)
         )
 
     def load(self):

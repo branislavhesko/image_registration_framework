@@ -34,7 +34,7 @@ class Configuration(ModelConfiguration, Paths):
     NEGATIVE_LOSS_COEF = 1.
     NUM_WORKERS = 4
     SHUFFLE = {Mode.TRAIN: False, Mode.VALIDATE: False}
-    USE_CUDA = True
+    USE_CUDA = False
     NUM_POS_PAIRS = 1000
 
 
