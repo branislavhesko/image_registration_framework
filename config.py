@@ -32,7 +32,7 @@ class Configuration(ModelConfiguration, Paths):
     DISTANCE_LIMIT = 10
     EPOCHS = 1
     NEGATIVE_LOSS_COEF = 1.
-    NUM_WORKERS = 4
+    NUM_WORKERS = 1
     SHUFFLE = {Mode.TRAIN: False, Mode.VALIDATE: False}
     USE_CUDA = False
     NUM_POS_PAIRS = 1000

@@ -29,15 +29,16 @@ class GeneralTrainer:
         self._data_loaders = get_data_loaders(self._cfg.DATASET, cfg, modes=self._cfg.MODES)
 
     def train(self):
+        self._model = self._model.cuda() if self._cfg.USE_CUDA else self._model
         for epoch in tqdm(range(self._cfg.EPOCHS)):
             self._timer.tic()
             self.train_single_epoch(epoch)
             self._timer.toc()
 
     def train_single_epoch(self, epoch):
+        self._model.train()
         assert Mode.TRAIN in self._data_loaders.keys()
         average_meter = AverageMeter()
-
         for idx, inputs in enumerate(self._data_loaders[Mode.TRAIN]):
             inputs = [inp.cuda() if self._cfg.USE_CUDA else inp for inp in inputs]
             self._optimizer.zero_grad()
