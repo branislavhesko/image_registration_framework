@@ -1,4 +1,5 @@
 from enum import auto, Enum
+
 from model.resunet import ResUNetBN2D
 
 
@@ -32,9 +33,9 @@ class Configuration(ModelConfiguration, Paths):
     DISTANCE_LIMIT = 10
     EPOCHS = 1
     NEGATIVE_LOSS_COEF = 1.
-    NUM_WORKERS = 1
+    NUM_WORKERS = 0
     SHUFFLE = {Mode.TRAIN: False, Mode.VALIDATE: False}
-    USE_CUDA = False
+    USE_CUDA = True
     NUM_POS_PAIRS = 1000
 
 

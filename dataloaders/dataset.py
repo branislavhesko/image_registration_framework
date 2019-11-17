@@ -1,9 +1,11 @@
 import glob
-import numpy as np
 import os
+
+import cv2
+import numpy as np
+import torch
 from PIL import Image
 from torch.utils.data import Dataset
-import torch
 
 from config import Configuration
 from utils.transforms import flatten
@@ -24,18 +26,21 @@ class RetinaDatasetPop2(Dataset):
         return len(self._images_first)
 
     def __getitem__(self, item):
-        first = Image.open(self._images_first[item])
-        second = Image.open(self._images_second[item])
+        first = np.array(Image.open(self._images_first[item]))
+        second = np.array(Image.open(self._images_second[item]))
+
+        # TODO: remove
+        first = cv2.resize(first, None, fx=0.5, fy=0.5)
+        second = cv2.resize(second, None, fx=0.5, fy=0.5)
         first, second = self._transform(first, second)
-        second = np.array(second)
         second = np.concatenate([second[:, :, np.newaxis]] * 3, axis=2)
-        image_width = max(np.array(first).shape[1], np.array(second).shape[1])
+        image_width = max(first.shape[1], second.shape[1])
         positive_pairs = self.find_positive_pairs(first, second, self._cfg.NUM_POS_PAIRS)
         positive_pairs = flatten(torch.from_numpy(np.array(positive_pairs)), image_width)
         return (
             torch.from_numpy(np.array(first) / 255.).permute([2, 0, 1]).float(),
             torch.from_numpy(np.array(second) / 255.).permute([2, 0, 1]).float(),
-            torch.cat([positive_pairs.unsqueeze(dim=1), positive_pairs.unsqueeze(dim=1)], dim=1)
+            torch.cat([positive_pairs.unsqueeze(dim=1), positive_pairs.unsqueeze(dim=1)], dim=1).long()
         )
 
     def load(self):
@@ -52,8 +57,8 @@ class RetinaDatasetPop2(Dataset):
 
     @staticmethod
     def find_positive_pairs(first, second, num_pairs_needed):
-        center = np.array(np.array(first).shape[:2]) // 2
-        points = (center // 2) * np.random.randn(num_pairs_needed, 2) + center
+        center = np.array(first.shape[:2]) // 2
+        points = (center // 8) * np.random.randn(num_pairs_needed, 2) + center
         return points.astype(np.int32)
 
 
