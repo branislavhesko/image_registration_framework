@@ -7,8 +7,8 @@ from tqdm import tqdm
 
 from config import Configuration, Mode
 from dataloaders.data_loader import get_data_loaders
-from utils.average_meter import AverageMeter
 from utils.timer import Timer
+from utils.visualization import visualize_features
 
 
 class GeneralTrainer:
@@ -39,17 +39,25 @@ class GeneralTrainer:
     def train_single_epoch(self, epoch):
         self._model.train()
         assert Mode.TRAIN in self._data_loaders.keys()
-        average_meter = AverageMeter()
         for idx, inputs in enumerate(self._data_loaders[Mode.TRAIN]):
+            idx_total = idx + len(self._data_loaders[Mode.TRAIN]) * epoch
             inputs = [inp.cuda() if self._cfg.USE_CUDA else inp for inp in inputs]
             self._optimizer.zero_grad()
             output_features_1 = self._model(inputs[0])
             output_features_2 = self._model(inputs[1])
 
-            loss = self.loss_function(output_features_1, output_features_2, inputs[2])
-            print(f"Loss: {loss.item()}")
+            positive_loss, negative_loss = self.loss_function(output_features_1, output_features_2, inputs[2])
+            self._writer.add_scalar("Loss/Positive", positive_loss.item(), idx_total)
+            self._writer.add_scalar("Loss/Negative", negative_loss.item(), idx_total)
+            loss = positive_loss - self._cfg.NEGATIVE_LOSS_COEF * negative_loss
+            self._writer.add_scalar("Loss/Total", loss.item(), idx_total)
             loss.backward()
             self._optimizer.step()
+
+            if not (self._cfg.TRAIN_VISUALIZATION_FREQUENCY % idx):
+                feats1_reduced, feats2_reduced = visualize_features(output_features_1, output_features_2)
+                self._writer.add_image("Image1/Features", feats1_reduced, epoch)
+                self._writer.add_image("Image2/Features", feats2_reduced, epoch)
 
     def validate(self):
         pass
@@ -58,7 +66,7 @@ class GeneralTrainer:
         positive_loss = self._positive_loss(features1, features2, pos_indices)
         negative_loss = self._negative_loss(features1, features2, pos_indices)
         print(f"Positive loss {positive_loss}, negative loss: {negative_loss}")
-        return positive_loss - self._cfg.NEGATIVE_LOSS_COEF * negative_loss
+        return positive_loss, negative_loss
 
     def _positive_loss(self, features1, features2, indices):
         B, C, H, W = features1.shape

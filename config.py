@@ -15,6 +15,7 @@ class Paths:
     PATH_TO_IMAGES_FIRST = "./data/retina_dataset/fundus"
     PATH_TO_IMAGES_SECOND = "./data/retina_dataset/experimental"
 
+
 class ModelConfiguration:
     IN_CHANNELS = 3
     INITIAL_LR = 1e-3
@@ -37,6 +38,8 @@ class Configuration(ModelConfiguration, Paths):
     SHUFFLE = {Mode.TRAIN: False, Mode.VALIDATE: False}
     USE_CUDA = True
     NUM_POS_PAIRS = 1000
+    VALIDATION_FREQUENCY = 5
+    TRAIN_VISUALIZATION_FREQUENCY = 10
 
 
 class PredictorConfiguration(Configuration):
