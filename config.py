@@ -18,12 +18,12 @@ class Paths:
 
 class ModelConfiguration:
     IN_CHANNELS = 3
-    INITIAL_LR = 1e-3
+    INITIAL_LR = 1e-2
     LR_DECAY = 0.97
     MODEL = ResUNetBN2D
     MOMENTUM = 0.95
     NORMALIZE_FEATURES = True
-    OUT_FEATURES = 64
+    OUT_FEATURES = 3
     WEIGHT_DECAY = 1e-4
 
 
@@ -32,8 +32,8 @@ class Configuration(ModelConfiguration, Paths):
 
     BATCH_SIZE = {Mode.TRAIN: 1, Mode.VALIDATE: 1}
     DISTANCE_LIMIT = 10
-    EPOCHS = 1
-    NEGATIVE_LOSS_COEF = 1.
+    EPOCHS = 30
+    NEGATIVE_LOSS_COEF = 2.
     NUM_WORKERS = 0
     SHUFFLE = {Mode.TRAIN: False, Mode.VALIDATE: False}
     USE_CUDA = True

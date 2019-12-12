@@ -57,7 +57,6 @@ class RetinaDatasetPop2(Dataset):
 
     @staticmethod
     def find_positive_pairs(first, second, num_pairs_needed):
-        center = np.array(first.shape[:2]) // 2
         points = np.array((np.random.randint(0, first.shape[0] - 1, num_pairs_needed),
                            np.random.randint(0, first.shape[1] - 1, num_pairs_needed)))
         return points.astype(np.int32)

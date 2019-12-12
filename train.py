@@ -14,11 +14,12 @@ from utils.visualization import visualize_features
 class GeneralTrainer:
 
     PIXEL_LIMIT = 10
-    NUM_NEG_PAIRS = 4096
+    NUM_NEG_PAIRS = 64
+    NUM_NEG_INDICES_FOR_LOSS = 10
 
     def __init__(self, cfg: Configuration):
         self._cfg = cfg
-        self._writer = SummaryWriter(log_dir="runs/retina")
+        self._writer = SummaryWriter()
         self._model = self._cfg.MODEL(in_channels=self._cfg.IN_CHANNELS, out_channels=self._cfg.OUT_FEATURES,
                                       normalize_feature=self._cfg.NORMALIZE_FEATURES)
         self._optimizer = torch.optim.SGD(
@@ -39,7 +40,7 @@ class GeneralTrainer:
     def train_single_epoch(self, epoch):
         self._model.train()
         assert Mode.TRAIN in self._data_loaders.keys()
-        for idx, inputs in enumerate(self._data_loaders[Mode.TRAIN]):
+        for idx, inputs in tqdm(enumerate(self._data_loaders[Mode.TRAIN])):
             idx_total = idx + len(self._data_loaders[Mode.TRAIN]) * epoch
             inputs = [inp.cuda() if self._cfg.USE_CUDA else inp for inp in inputs]
             self._optimizer.zero_grad()
@@ -49,15 +50,19 @@ class GeneralTrainer:
             positive_loss, negative_loss = self.loss_function(output_features_1, output_features_2, inputs[2])
             self._writer.add_scalar("Loss/Positive", positive_loss.item(), idx_total)
             self._writer.add_scalar("Loss/Negative", negative_loss.item(), idx_total)
-            loss = positive_loss - self._cfg.NEGATIVE_LOSS_COEF * negative_loss
+            loss = self._cfg.NEGATIVE_LOSS_COEF * (-negative_loss) + positive_loss
             self._writer.add_scalar("Loss/Total", loss.item(), idx_total)
             loss.backward()
             self._optimizer.step()
 
-            if not (self._cfg.TRAIN_VISUALIZATION_FREQUENCY % idx):
-                feats1_reduced, feats2_reduced = visualize_features(output_features_1, output_features_2)
-                self._writer.add_image("Image1/Features", feats1_reduced, epoch)
-                self._writer.add_image("Image2/Features", feats2_reduced, epoch)
+            if not (idx % self._cfg.TRAIN_VISUALIZATION_FREQUENCY):
+                feats1_reduced, feats2_reduced = visualize_features(
+                    output_features_1.squeeze().permute([1, 2, 0]).detach().cpu().numpy(),
+                    output_features_2.squeeze().permute([1, 2, 0]).detach().cpu().numpy())
+                self._writer.add_image("Features1", feats1_reduced, idx)
+                self._writer.add_image("Features2", feats2_reduced, idx)
+                self._writer.add_image("Image1", inputs[0].squeeze(), idx)
+                self._writer.add_image("Image2", inputs[1].squeeze(), idx)
 
     def validate(self):
         pass
@@ -65,38 +70,52 @@ class GeneralTrainer:
     def loss_function(self, features1, features2, pos_indices):
         positive_loss = self._positive_loss(features1, features2, pos_indices)
         negative_loss = self._negative_loss(features1, features2, pos_indices)
-        print(f"Positive loss {positive_loss}, negative loss: {negative_loss}")
         return positive_loss, negative_loss
 
     def _positive_loss(self, features1, features2, indices):
         B, C, H, W = features1.shape
         feats1_flat = features1.view(C, -1)
+        feats2_flat = features2.view(C, -1)
+
         features1_pos = feats1_flat[:, indices[0, :, 0].long()]
-        features2_pos = torch.index_select(features2.view(*features2.shape[:2], -1), 2, indices[0, :, 1].long())
-        return torch.mean(torch.sqrt(torch.sum(torch.pow(features1_pos - features2_pos, 2), dim=1)))
+        features2_pos = feats2_flat[:, indices[0, :, 1].long()]
+
+        return torch.mean(torch.sqrt(torch.sum(torch.pow(features1_pos - features2_pos, 2), dim=0)))
 
     def _negative_loss(self, feats1, feats2, pos_pairs):
         B, C, H, W = feats1.shape
         feats1_flat = feats1.view(C, -1)
-        negative_loss = 0
-        negative_indices = np.random.choice(feats1_flat.shape[-1], self.NUM_NEG_PAIRS)
-        feats2_masked = feats2.view(C, -1)
-        choice = np.random.choice(feats2_masked.shape[1], 32768, replace=False)
-        choice.sort()
-        random_feats2 = feats2_masked[:, choice]
-        for negative_idx in negative_indices:
-            # correspondence = pos_pairs[:, torch.abs(pos_pairs[:, :, 0] - negative_idx).argmin(), 1]
-            # row = correspondence // W
-            # col = correspondence % W
-            # mask = torch.ones_like(feats2)
-            # mask[:, :, row - self.PIXEL_LIMIT: row + self.PIXEL_LIMIT,
-            #      col - self.PIXEL_LIMIT: col + self.PIXEL_LIMIT] = 0
-            # feats2_masked = feats2[mask > 0].view(C, -1)
-            dist = torch.sqrt(torch.sum(torch.pow(feats1_flat[
-                                                  :, negative_idx].unsqueeze(dim=1) - random_feats2, 2), dim=0))
-            negative_loss += dist.min().item()
+        feats2_flat = feats2.view(C, -1)
 
-        return negative_loss / self.NUM_NEG_PAIRS
+        negative_indices = np.random.choice(feats1_flat.shape[-1], self.NUM_NEG_PAIRS, replace=False)
+        negative_loss = torch.empty(self.NUM_NEG_PAIRS)
+        for index, negative_idx in enumerate(negative_indices):
+            negative_indices_hard = torch.empty(self.NUM_NEG_INDICES_FOR_LOSS)
+            mask = np.array([np.arange(negative_idx + W * (i - self.PIXEL_LIMIT) - self.PIXEL_LIMIT,
+                              negative_idx + W * (i - self.PIXEL_LIMIT) + self.PIXEL_LIMIT)
+                    for i in range(self.PIXEL_LIMIT * 2)]).reshape(1, -1)
+            mask = mask[(mask > 0) & (mask < feats1_flat.shape[-1])]
+            dist = torch.sqrt(torch.sum(torch.pow(feats1_flat[
+                                                  :, negative_idx].unsqueeze(dim=1) - feats2_flat, 2), dim=0))
+            dist_sorted_indices = dist.argsort()
+
+            idx = 0
+            counter = 0
+            print(negative_idx)
+            while counter < self.NUM_NEG_INDICES_FOR_LOSS and idx < dist.shape[-1]:
+                if not dist[dist_sorted_indices[idx]].item() in mask:
+                    negative_indices_hard[counter] = dist[dist_sorted_indices[idx]]
+                    counter += 1
+                    mask_new = np.array([np.arange(dist_sorted_indices[idx].item() + W * (i - self.PIXEL_LIMIT) - self.PIXEL_LIMIT,
+                                                   dist_sorted_indices[idx].item() + W * (i - self.PIXEL_LIMIT) + self.PIXEL_LIMIT)
+                                     for i in range(self.PIXEL_LIMIT * 2)]).reshape(1, -1)
+                    mask_new = mask_new[(mask_new > 0) & (mask_new < feats1_flat.shape[-1])]
+                    mask = np.concatenate([mask, mask_new], axis=0)
+                idx += 1
+
+            negative_loss[index] = torch.mean(negative_indices_hard)
+
+        return torch.mean(negative_loss.cuda())
 
     def load_checkpoint(self):
         pass

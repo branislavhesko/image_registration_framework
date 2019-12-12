@@ -173,14 +173,15 @@ class ResUNet2(nn.Module):
         bias=False)
     # self.norm1_tr = get_norm(NORM_TYPE, TR_CHANNELS[1], bn_momentum=bn_momentum)
 
-    self.final = nn.Conv2d(
-        in_channels=TR_CHANNELS[1],
-        out_channels=out_channels,
-        kernel_size=1,
-        stride=1,
-        padding=0,
-        dilation=1,
-        bias=True)
+    self.final_conv = nn.Sequential(*[nn.Conv2d(in_channels=TR_CHANNELS[1], out_channels=TR_CHANNELS[1], kernel_size=3,
+                                                stride=1, padding=1),
+                                      nn.ReLU(inplace=True),
+                                      nn.Conv2d(in_channels=TR_CHANNELS[1], out_channels=TR_CHANNELS[1], kernel_size=1,
+                                                stride=1, padding=0, dilation=1, bias=False),
+                                      nn.ReLU(inplace=True)])
+
+    self.final = nn.Conv2d(in_channels=TR_CHANNELS[1], out_channels=TR_CHANNELS[1], kernel_size=1,
+                           stride=1, padding=0, dilation=1, bias=True)
 
     self.weight_initialization()
 
@@ -240,6 +241,7 @@ class ResUNet2(nn.Module):
                     dim=1)
     out = self.conv1_tr(out)
     out = F.relu(out)
+    out = self.final_conv(out)
     out = self.final(out)
 
     if self.normalize_feature:
