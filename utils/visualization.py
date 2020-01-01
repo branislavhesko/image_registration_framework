@@ -1,8 +1,31 @@
 import numpy as np
 import torch
+from matplotlib import pyplot as plt
 from sklearn.decomposition import PCA
 
 from utils.transforms import unflatten
+
+
+def visualize_closest_points(image1, image2, features1, features2, number_of_correspondences=100):
+    random_points = (
+        np.random.randint(0, image1.shape[1], size=number_of_correspondences),
+        np.random.randint(0, image1.shape[0], size=number_of_correspondences))
+    correspondences = []
+    for idx in range(number_of_correspondences):
+        distance_point_second_image = np.sqrt(np.sum(
+            np.power(features2 - features1[random_points[1][idx], random_points[0][idx], :], 2), axis=2))
+        correspondences.append(np.unravel_index(np.argmin(
+            distance_point_second_image), distance_point_second_image.shape)[::-1])
+    fig, ax = plt.subplots(1, 2)
+    correspondences = np.asarray(correspondences).T
+    ax[0].imshow(image1)
+    ax[0].plot(*np.asarray(random_points)[:], "+r")
+    for i in range(number_of_correspondences):
+        ax[0].text(random_points[0][i] + 5, random_points[1][i] - 5, str(i))
+        ax[1].text(correspondences[0][i] + 5, correspondences[1][i] - 5, str(i))
+    ax[1].imshow(image2)
+    ax[1].plot(*correspondences, "+b")
+    return fig
 
 
 def visualize_points(image1: np.ndarray, image2: np.ndarray, points: np.ndarray):
@@ -30,3 +53,13 @@ def visualize_features(features1: np.ndarray, features2: np.ndarray):
     feats2_reduced_n = (feats2_reduced - np.amin(feats2_reduced)) / (np.amax(feats2_reduced) - np.amin(feats2_reduced))
     return torch.from_numpy(feats1_reduced_n.reshape(h, w, 3)).permute([2, 0, 1]), \
            torch.from_numpy(feats2_reduced_n.reshape(h, w, 3)).permute([2, 0, 1])
+
+
+if __name__ == "__main__":
+    im1 = np.random.rand(300, 300, 3)
+    im2 = np.random.rand(300, 300, 3)
+    f1 = np.random.rand(300, 300, 32)
+    f2 = np.random.rand(300, 300, 32)
+    fig = visualize_closest_points(im1, im2, f1, f2, number_of_correspondences=5)
+    print(fig)
+    plt.show()
