@@ -1,6 +1,6 @@
 from enum import auto, Enum
 
-from model.resunet import ResUNetBN2D
+from model.resunet import ResUNetBN2F
 
 
 class Mode(Enum):
@@ -20,7 +20,7 @@ class ModelConfiguration:
     IN_CHANNELS = 3
     INITIAL_LR = 1e-4
     LR_DECAY = 0.97
-    MODEL = ResUNetBN2D
+    MODEL = ResUNetBN2F
     MOMENTUM = 0.95
     NORMALIZE_FEATURES = True
     OUT_FEATURES = 3

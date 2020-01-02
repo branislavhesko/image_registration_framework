@@ -8,6 +8,7 @@ from tqdm import tqdm
 
 from config import Configuration, Mode
 from dataloaders.data_loader import get_data_loaders
+from loss import HardestContrastiveLoss
 from utils.timer import Timer
 from utils.visualization import visualize_features, visualize_closest_points
 
@@ -15,7 +16,7 @@ from utils.visualization import visualize_features, visualize_closest_points
 class GeneralTrainer:
 
     PIXEL_LIMIT = 10
-    NUM_NEG_PAIRS = 64
+    NUM_NEG_PAIRS = 128
     NUM_NEG_INDICES_FOR_LOSS = 10
 
     def __init__(self, cfg: Configuration):
@@ -30,6 +31,7 @@ class GeneralTrainer:
             optimizer=self._optimizer, gamma=self._cfg.WEIGHT_DECAY)
         self._timer = Timer()
         self._data_loaders = get_data_loaders(self._cfg.DATASET, cfg, modes=self._cfg.MODES)
+        self._loss = HardestContrastiveLoss(cfg)
 
     def train(self):
         self._model = self._model.cuda() if self._cfg.USE_CUDA else self._model
@@ -47,14 +49,13 @@ class GeneralTrainer:
             self._optimizer.zero_grad()
             output_features_1 = self._model(inputs[0])
             output_features_2 = self._model(inputs[1])
+            loss = self._loss((output_features_1, output_features_2, inputs[2]))
 
-            positive_loss, negative_loss = self.loss_function(output_features_1, output_features_2, inputs[2])
-            self._writer.add_scalar("Loss/Positive", positive_loss.item(), idx_total)
-            self._writer.add_scalar("Loss/Negative", negative_loss.item(), idx_total)
+            # self._writer.add_scalar("Loss/Positive", positive_loss.item(), idx_total)
+            # self._writer.add_scalar("Loss/Negative", negative_loss.item(), idx_total)
             self._writer.add_scalar("Mean/feats1", output_features_1.detach().cpu().mean(), idx_total)
             self._writer.add_scalar("Mean/feats2", output_features_2.detach().cpu().mean(), idx_total)
 
-            loss = self._cfg.NEGATIVE_LOSS_COEF * negative_loss + positive_loss
             self._writer.add_scalar("Loss/Total", loss.item(), idx_total)
             loss.backward()
             self._optimizer.step()
