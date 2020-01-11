@@ -2,6 +2,8 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
+from config import LossConfiguration
+
 
 class HardestContrastiveLoss(torch.nn.Module):
 
@@ -76,3 +78,43 @@ class NegativeHardestContrastiveLoss(torch.nn.Module):
             negative_loss += -torch.mean(dist[negative_indices2, ])
 
         return negative_loss / self.NUM_NEG_PAIRS
+
+
+class GeneralVesselLoss(torch.nn.Module):
+
+    def __init__(self, config):
+        super().__init__()
+        self._config = config
+
+    @staticmethod
+    def make_flat(tensor: torch.Tensor):
+        return tensor.view(tensor.shape[:2], -1)
+
+
+class PositiveVesselLoss(GeneralVesselLoss):
+    def forward(self, features1, features2, vessel_mask):
+        features1_flat, features2_flat, vessel_mask_flat = [
+            self.make_flat(t) for t in [features1, features2, vessel_mask]]
+        random_choice = np.random.choice(features1_flat.shape[-1],
+                                         self._config.NUM_POS_PAIRS, replace=False, p=vessel_mask)
+
+
+class NegativeVesselLoss(GeneralVesselLoss):
+
+    def forward(self, features1, features2, vessel_mask):
+        features1_flat, features2_flat, vessel_mask_flat = [
+            self.make_flat(t) for t in [features1, features2, vessel_mask]]
+
+
+class TotalVesselLoss(torch.nn.Module):
+
+    def __init__(self, config: LossConfiguration):
+        super().__init__()
+        self._config = config
+        self._neg_loss = NegativeVesselLoss(self._config)
+        self._pos_loss = PositiveVesselLoss(self._config)
+
+    def forward(self, features1, features2, vessel_mask):
+        positive_loss = self._pos_loss(features1, features2, vessel_mask)
+        negative_loss = self._neg_loss(features1, features2, vessel_mask)
+        return self._config.NEGATIVE_LOSS_WEIGHT * negative_loss + positive_loss

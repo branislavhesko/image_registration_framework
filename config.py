@@ -27,7 +27,15 @@ class ModelConfiguration:
     WEIGHT_DECAY = 1e-4
 
 
-class Configuration(ModelConfiguration, Paths):
+class LossConfiguration:
+    NUM_POS_PAIRS = 128
+    NUM_NEG_PAIRS = 64
+    PIXEL_LIMIT = 10
+    NUM_NEG_INDICES_FOR_LOSS = 5
+    NEGATIVE_LOSS_WEIGHT = 1
+
+
+class Configuration(ModelConfiguration, Paths, LossConfiguration):
     MODES = [Mode.TRAIN, Mode.VALIDATE]
 
     BATCH_SIZE = {Mode.TRAIN: 1, Mode.VALIDATE: 1}
@@ -37,7 +45,6 @@ class Configuration(ModelConfiguration, Paths):
     NUM_WORKERS = 0
     SHUFFLE = {Mode.TRAIN: False, Mode.VALIDATE: False}
     USE_CUDA = True
-    NUM_POS_PAIRS = 128
     VALIDATION_FREQUENCY = 5
     TRAIN_VISUALIZATION_FREQUENCY = 10
 

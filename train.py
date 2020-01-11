@@ -1,8 +1,6 @@
 import os
 
-import numpy as np
 import torch
-import torch.nn.functional as F
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
@@ -59,7 +57,6 @@ class GeneralTrainer:
             self._writer.add_scalar("Loss/Total", loss.item(), idx_total)
             loss.backward()
             self._optimizer.step()
-            print(output_features_2.abs().mean())
             if not (idx % self._cfg.TRAIN_VISUALIZATION_FREQUENCY):
                 feats1_reduced, feats2_reduced = visualize_features(
                     output_features_1.squeeze().permute([1, 2, 0]).detach().cpu().numpy(),
@@ -77,55 +74,6 @@ class GeneralTrainer:
 
     def validate(self):
         pass
-
-    def loss_function(self, features1, features2, pos_indices):
-        positive_loss = self._positive_loss(features1, features2, pos_indices)
-        negative_loss = self._negative_loss(features1, features2, pos_indices)
-        return positive_loss, negative_loss
-
-    def _positive_loss(self, features1, features2, indices):
-        B, C, H, W = features1.shape
-        feats1_flat = features1.view(C, -1)
-        feats2_flat = features2.view(C, -1)
-
-        features1_pos = feats1_flat[:, indices[0, :, 0].long()]
-        features2_pos = feats2_flat[:, indices[0, :, 1].long()]
-
-        return torch.mean(F.relu(torch.sum(torch.pow(features1_pos - features2_pos, 2), dim=0)))
-
-    def _negative_loss(self, feats1, feats2, pos_pairs):
-        B, C, H, W = feats1.shape
-        feats1_flat = feats1.view(C, -1)
-        feats2_flat = feats2.view(C, -1)
-
-        negative_indices = np.random.choice(feats1_flat.shape[-1], self.NUM_NEG_PAIRS, replace=False)
-        negative_loss = torch.empty(self.NUM_NEG_PAIRS)
-        for index, negative_idx in enumerate(negative_indices):
-            negative_indices_hard = torch.empty(self.NUM_NEG_INDICES_FOR_LOSS)
-            mask = np.array([np.arange(negative_idx + W * (i - self.PIXEL_LIMIT) - self.PIXEL_LIMIT,
-                              negative_idx + W * (i - self.PIXEL_LIMIT) + self.PIXEL_LIMIT)
-                    for i in range(self.PIXEL_LIMIT * 2)]).reshape(1, -1)
-            mask = mask[(mask > 0) & (mask < feats1_flat.shape[-1])]
-            dist = F.relu(torch.sum(torch.pow(feats1_flat[
-                                                  :, negative_idx].unsqueeze(dim=1) - feats2_flat, 2), dim=0))
-            dist_sorted_indices = dist.argsort()
-
-            idx = 0
-            counter = 0
-            while counter < self.NUM_NEG_INDICES_FOR_LOSS and idx < dist.shape[-1]:
-                if not dist[dist_sorted_indices[idx]].item() in mask:
-                    negative_indices_hard[counter] = -dist[dist_sorted_indices[idx]]
-                    counter += 1
-                    mask_new = np.array([np.arange(dist_sorted_indices[idx].item() + W * (i - self.PIXEL_LIMIT) - self.PIXEL_LIMIT,
-                                                   dist_sorted_indices[idx].item() + W * (i - self.PIXEL_LIMIT) + self.PIXEL_LIMIT)
-                                     for i in range(self.PIXEL_LIMIT * 2)]).reshape(1, -1)
-                    mask_new = mask_new[(mask_new > 0) & (mask_new < feats1_flat.shape[-1])]
-                    mask = np.concatenate([mask, mask_new], axis=0)
-                idx += 1
-
-            negative_loss[index] = torch.mean(negative_indices_hard)
-
-        return torch.mean(negative_loss.cuda())
 
     def load_checkpoint(self):
         pass
