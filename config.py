@@ -41,7 +41,7 @@ class Configuration(ModelConfiguration, Paths, LossConfiguration):
     BATCH_SIZE = {Mode.TRAIN: 1, Mode.VALIDATE: 1}
     DISTANCE_LIMIT = 10
     EPOCHS = 30
-    NEGATIVE_LOSS_COEF = 1.
+    NEGATIVE_LOSS_COEF = -1.
     NUM_WORKERS = 0
     SHUFFLE = {Mode.TRAIN: False, Mode.VALIDATE: False}
     USE_CUDA = True

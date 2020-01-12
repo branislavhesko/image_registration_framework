@@ -90,13 +90,25 @@ class GeneralVesselLoss(torch.nn.Module):
     def make_flat(tensor: torch.Tensor):
         return tensor.view(tensor.shape[:2], -1)
 
+    @staticmethod
+    def distance(tensor1: torch.Tensor, tensor2: torch.Tensor, dim=0):
+        return torch.sqrt(torch.sum(torch.pow(tensor1 - tensor2, 2), dim=dim))
+
 
 class PositiveVesselLoss(GeneralVesselLoss):
     def forward(self, features1, features2, vessel_mask):
         features1_flat, features2_flat, vessel_mask_flat = [
             self.make_flat(t) for t in [features1, features2, vessel_mask]]
-        random_choice = np.random.choice(features1_flat.shape[-1],
-                                         self._config.NUM_POS_PAIRS, replace=False, p=vessel_mask)
+        random_choice10 = np.random.choice(features1_flat.shape[-1],
+                                          self._config.NUM_POS_PAIRS, replace=False, p=1 - vessel_mask)
+        random_choice21 = np.random.choice(features2_flat.shape[-1],
+                                          self._config.NUM_POS_PAIRS, replace=False, p=vessel_mask)
+        random_choice11 = np.random.choice(features1_flat.shape[-1],
+                                          self._config.NUM_POS_PAIRS, replace=False, p=vessel_mask)
+        random_choice20 = np.random.choice(features2_flat.shape[-1],
+                                          self._config.NUM_POS_PAIRS, replace=False, p=1 - vessel_mask)
+        return self.distance(features1_flat[..., random_choice10], features2_flat[..., random_choice20], dim=3) + \
+            self.distance(features1_flat[..., random_choice11], features2_flat[..., random_choice21], dim=3)
 
 
 class NegativeVesselLoss(GeneralVesselLoss):
@@ -104,6 +116,16 @@ class NegativeVesselLoss(GeneralVesselLoss):
     def forward(self, features1, features2, vessel_mask):
         features1_flat, features2_flat, vessel_mask_flat = [
             self.make_flat(t) for t in [features1, features2, vessel_mask]]
+        random_choice10 = np.random.choice(features1_flat.shape[-1],
+                                          self._config.NUM_NEG_PAIRS, replace=False, p=1 - vessel_mask)
+        random_choice21 = np.random.choice(features2_flat.shape[-1],
+                                          self._config.NUM_NEG_PAIRS, replace=False, p=vessel_mask)
+        random_choice11 = np.random.choice(features1_flat.shape[-1],
+                                          self._config.NUM_NEG_PAIRS, replace=False, p=vessel_mask)
+        random_choice20 = np.random.choice(features2_flat.shape[-1],
+                                          self._config.NUM_NEG_PAIRS, replace=False, p=1 - vessel_mask)
+        return self.distance(features1_flat[..., random_choice10], features2_flat[..., random_choice21], dim=3) + \
+            self.distance(features1_flat[..., random_choice11], features2_flat[..., random_choice20], dim=3)
 
 
 class TotalVesselLoss(torch.nn.Module):
