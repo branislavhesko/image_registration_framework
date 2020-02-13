@@ -2,11 +2,12 @@ from torch.utils.data import DataLoader
 from typing import List
 
 from config import Configuration, Mode
-from dataloaders.dataset import RetinaDatasetPop2
+from dataloaders.dataset import RetinaDatasetPop2, VesselDataset
 
 
 available_datasets = {
-    "RETINA": RetinaDatasetPop2
+    "RETINA": RetinaDatasetPop2,
+    "VESSEL": VesselDataset
 }
 
 

@@ -1,5 +1,5 @@
-from config import Configuration
-from train import GeneralTrainer
+from config import Configuration, VesselConfiguration
+from train import GeneralTrainer, VesselTrainer
 
-trainer = GeneralTrainer(Configuration())
+trainer = VesselTrainer(VesselConfiguration())
 trainer.train()

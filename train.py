@@ -1,3 +1,4 @@
+from abc import abstractmethod
 import os
 
 import torch
@@ -45,32 +46,26 @@ class GeneralTrainer:
             idx_total = idx + len(self._data_loaders[Mode.TRAIN]) * epoch
             inputs = [inp.cuda() if self._cfg.USE_CUDA else inp for inp in inputs]
             self._optimizer.zero_grad()
-            output_features_1 = self._model(inputs[0])
-            output_features_2 = self._model(inputs[1])
-            loss = self._loss((output_features_1, output_features_2, inputs[2]))
+            outputs = self.forward(inputs)
+            loss = self.calculate_loss(outputs, inputs)
 
             # self._writer.add_scalar("Loss/Positive", positive_loss.item(), idx_total)
             # self._writer.add_scalar("Loss/Negative", negative_loss.item(), idx_total)
-            self._writer.add_scalar("Mean/feats1", output_features_1.detach().cpu().mean(), idx_total)
-            self._writer.add_scalar("Mean/feats2", output_features_2.detach().cpu().mean(), idx_total)
-
-            self._writer.add_scalar("Loss/Total", loss.item(), idx_total)
             loss.backward()
             self._optimizer.step()
-            if not (idx % self._cfg.TRAIN_VISUALIZATION_FREQUENCY):
-                feats1_reduced, feats2_reduced = visualize_features(
-                    output_features_1.squeeze().permute([1, 2, 0]).detach().cpu().numpy(),
-                    output_features_2.squeeze().permute([1, 2, 0]).detach().cpu().numpy())
-                self._writer.add_image("Features1", feats1_reduced, idx)
-                self._writer.add_image("Features2", feats2_reduced, idx)
-                self._writer.add_image("Image1", inputs[0].squeeze(), idx)
-                self._writer.add_image("Image2", inputs[1].squeeze(), idx)
-                self._writer.add_figure("Matches", visualize_closest_points(
-                    image1=inputs[0].squeeze().permute([1, 2, 0]).detach().cpu().numpy(),
-                    image2=inputs[1].squeeze().permute([1, 2, 0]).detach().cpu().numpy(),
-                    features1=output_features_1.squeeze().permute([1, 2, 0]).detach().cpu().numpy(),
-                    features2=output_features_2.squeeze().permute([1, 2, 0]).detach().cpu().numpy(),
-                    number_of_correspondences=10), idx)
+            self.visualize(inputs, outputs, loss, idx, idx_total)
+
+    @abstractmethod
+    def forward(self, *args, **kwargs):
+        pass
+
+    @abstractmethod
+    def calculate_loss(self, *args, **kwargs):
+        pass
+
+    @abstractmethod
+    def visualize(self, *args, **kwargs):
+        pass
 
     def validate(self):
         pass
@@ -87,3 +82,55 @@ class GeneralTrainer:
         if not os.path.exists(self._cfg.CHECKPOINT_PATH):
             os.makedirs(self._cfg.CHECKPOINT_PATH)
         torch.save(state_dict, os.path.join(self._cfg.CHECKPOINT_PATH, file_name + ".pth"))
+
+
+class RegistrationTrainer(GeneralTrainer):
+
+    def forward(self, inputs):
+        output_features_1 = self._model(inputs[0])
+        output_features_2 = self._model(inputs[1])
+        return [output_features_1, output_features_2]
+
+    def calculate_loss(self, outputs, inputs):
+        return self._loss((outputs[0], outputs[1], inputs[2]))
+
+    def visualize(self, inputs, outputs, loss, idx, idx_total):
+        self._writer.add_scalar("Mean/feats1", outputs[0].detach().cpu().mean(), idx_total)
+        self._writer.add_scalar("Mean/feats2", outputs[1].detach().cpu().mean(), idx_total)
+
+        self._writer.add_scalar("Loss/Total", loss.item(), idx_total)
+        if not (idx % self._cfg.TRAIN_VISUALIZATION_FREQUENCY):
+            feats1_reduced, feats2_reduced = visualize_features(
+                outputs[0].squeeze().permute([1, 2, 0]).detach().cpu().numpy(),
+                outputs[1].squeeze().permute([1, 2, 0]).detach().cpu().numpy())
+            self._writer.add_image("Features1", feats1_reduced, idx)
+            self._writer.add_image("Features2", feats2_reduced, idx)
+            self._writer.add_image("Image1", inputs[0].squeeze(), idx)
+            self._writer.add_image("Image2", inputs[1].squeeze(), idx)
+            self._writer.add_figure("Matches", visualize_closest_points(
+                image1=inputs[0].squeeze().permute([1, 2, 0]).detach().cpu().numpy(),
+                image2=inputs[1].squeeze().permute([1, 2, 0]).detach().cpu().numpy(),
+                features1=outputs[0].squeeze().permute([1, 2, 0]).detach().cpu().numpy(),
+                features2=outputs[1].squeeze().permute([1, 2, 0]).detach().cpu().numpy(),
+                number_of_correspondences=10), idx)
+
+
+class VesselTrainer(GeneralTrainer):
+
+    def forward(self, inputs):
+        image, mask = inputs
+        return self._model(image)
+
+    def calculate_loss(self, outputs, inputs):
+        return self._loss(outputs, inputs[1])
+
+    def visualize(self, inputs, outputs, loss, idx, idx_total):
+        self._writer.add_scalar("Mean/feats1", outputs[0].detach().cpu().mean(), idx_total)
+
+        self._writer.add_scalar("Loss/Total", loss.item(), idx_total)
+        if not (idx % self._cfg.TRAIN_VISUALIZATION_FREQUENCY):
+            feats = outputs[0].squeeze().permute([1, 2, 0]).detach().cpu().numpy()
+            # TODO: refactor to a method taking an iterable!
+            feats1_reduced, _ = visualize_features(feats, feats)
+            self._writer.add_image("Features", feats1_reduced, idx)
+            self._writer.add_image("Image1", inputs[0].squeeze(), idx)

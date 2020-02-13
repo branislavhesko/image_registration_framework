@@ -1,3 +1,4 @@
+from abc import abstractmethod
 import glob
 import os
 
@@ -60,6 +61,28 @@ class RetinaDatasetPop2(Dataset):
         points = np.array((np.random.randint(0, first.shape[0] - 1, num_pairs_needed),
                            np.random.randint(0, first.shape[1] - 1, num_pairs_needed)))
         return points.astype(np.int32)
+
+
+class VesselDataset(Dataset):
+
+    def __init__(self, cfg: Configuration):
+        self._cfg = cfg
+        self.images = []
+        self.masks = []
+
+    def load(self):
+        self.images = sorted(glob.glob(os.path.join(self._cfg.PATH_TO_IMAGES_FIRST, "*." + self._cfg.EXTENSION_FIRST)))
+        self.masks = sorted(glob.glob(os.path.join(self._cfg.PATH_TO_MASKS, "*." + self._cfg.EXTENSION_MASK)))
+        assert len(self.images) == len(self.masks)
+
+    def __len__(self):
+        return len(self.images)
+
+    def __getitem__(self, item):
+        image = np.array(Image.open(self.images[item])) / 255. - 0.5
+        mask = cv2.imread(self.masks[item], cv2.IMREAD_GRAYSCALE)
+        mask = (mask > 0).astype(np.uint8)
+        return image, mask
 
 
 if __name__ == "__main__":

@@ -52,11 +52,11 @@ class NegativeHardestContrastiveLoss(torch.nn.Module):
         negative_indices1 = positive_pairs[0, :, 0].cpu().numpy()
         for index, negative_idx in enumerate(negative_indices1):
             mask = np.array([np.arange(negative_idx + W * (i - self.PIXEL_LIMIT) - self.PIXEL_LIMIT,
-                             negative_idx + W * (i - self.PIXEL_LIMIT) + self.PIXEL_LIMIT)
-                            for i in range(self.PIXEL_LIMIT * 2)]).reshape(1, -1)
+                                       negative_idx + W * (i - self.PIXEL_LIMIT) + self.PIXEL_LIMIT)
+                             for i in range(self.PIXEL_LIMIT * 2)]).reshape(1, -1)
             mask = mask[(mask > 0) & (mask < feats1_flat.shape[-1])]
             dist = F.relu(torch.sum(torch.pow(feats1_flat[
-                                                  :, negative_idx].unsqueeze(dim=1) - feats2_flat, 2), dim=0))
+                                              :, negative_idx].unsqueeze(dim=1) - feats2_flat, 2), dim=0))
             dist_sorted_indices = dist.argsort()
             negative_indices2 = []
 
@@ -70,7 +70,7 @@ class NegativeHardestContrastiveLoss(torch.nn.Module):
                             i - self.PIXEL_LIMIT) - self.PIXEL_LIMIT,
                                                    dist_sorted_indices[idx].item() + W * (
                                                            i - self.PIXEL_LIMIT) + self.PIXEL_LIMIT)
-                                     for i in range(self.PIXEL_LIMIT * 2)]).reshape(1, -1)
+                                         for i in range(self.PIXEL_LIMIT * 2)]).reshape(1, -1)
                     mask_new = mask_new[(mask_new > 0) & (mask_new < feats1_flat.shape[-1])]
                     mask = np.concatenate([mask, mask_new], axis=0)
                 idx += 1
@@ -94,38 +94,31 @@ class GeneralVesselLoss(torch.nn.Module):
     def distance(tensor1: torch.Tensor, tensor2: torch.Tensor, dim=0):
         return torch.sqrt(torch.sum(torch.pow(tensor1 - tensor2, 2), dim=dim))
 
+    @staticmethod
+    def get_random_choices(features_flat, vessel_mask, num_pairs):
+        random_choice10 = np.random.choice(features_flat.shape[-1],
+                                           num_pairs, replace=False, p=1 - vessel_mask)
+        random_choice21 = np.random.choice(features_flat.shape[-1],
+                                           num_pairs, replace=False, p=vessel_mask)
+        random_choice11 = np.random.choice(features_flat.shape[-1],
+                                           num_pairs, replace=False, p=vessel_mask)
+        random_choice20 = np.random.choice(features_flat.shape[-1],
+                                           num_pairs, replace=False, p=1 - vessel_mask)
+        return random_choice10, random_choice21, random_choice11, random_choice20
+
 
 class PositiveVesselLoss(GeneralVesselLoss):
-    def forward(self, features1, features2, vessel_mask):
-        features1_flat, features2_flat, vessel_mask_flat = [
-            self.make_flat(t) for t in [features1, features2, vessel_mask]]
-        random_choice10 = np.random.choice(features1_flat.shape[-1],
-                                          self._config.NUM_POS_PAIRS, replace=False, p=1 - vessel_mask)
-        random_choice21 = np.random.choice(features2_flat.shape[-1],
-                                          self._config.NUM_POS_PAIRS, replace=False, p=vessel_mask)
-        random_choice11 = np.random.choice(features1_flat.shape[-1],
-                                          self._config.NUM_POS_PAIRS, replace=False, p=vessel_mask)
-        random_choice20 = np.random.choice(features2_flat.shape[-1],
-                                          self._config.NUM_POS_PAIRS, replace=False, p=1 - vessel_mask)
-        return self.distance(features1_flat[..., random_choice10], features2_flat[..., random_choice20], dim=3) + \
-            self.distance(features1_flat[..., random_choice11], features2_flat[..., random_choice21], dim=3)
+    def forward(self, features_flat, vessel_mask_flat):
+        rc10, rc21, rc11, rc20 = self.get_random_choices(features_flat, vessel_mask_flat, self._config.NUM_POS_PAIRS)
+        return self.distance(features_flat[..., rc10], features_flat[..., rc20], dim=3) + \
+            self.distance(features_flat[..., rc11], features_flat[..., rc21], dim=3)
 
 
 class NegativeVesselLoss(GeneralVesselLoss):
 
-    def forward(self, features1, features2, vessel_mask):
-        features1_flat, features2_flat, vessel_mask_flat = [
-            self.make_flat(t) for t in [features1, features2, vessel_mask]]
-        random_choice10 = np.random.choice(features1_flat.shape[-1],
-                                          self._config.NUM_NEG_PAIRS, replace=False, p=1 - vessel_mask)
-        random_choice21 = np.random.choice(features2_flat.shape[-1],
-                                          self._config.NUM_NEG_PAIRS, replace=False, p=vessel_mask)
-        random_choice11 = np.random.choice(features1_flat.shape[-1],
-                                          self._config.NUM_NEG_PAIRS, replace=False, p=vessel_mask)
-        random_choice20 = np.random.choice(features2_flat.shape[-1],
-                                          self._config.NUM_NEG_PAIRS, replace=False, p=1 - vessel_mask)
-        return self.distance(features1_flat[..., random_choice10], features2_flat[..., random_choice21], dim=3) + \
-            self.distance(features1_flat[..., random_choice11], features2_flat[..., random_choice20], dim=3)
+    def forward(self, features_flat, vessel_mask_flat):
+        rc10, rc21, _, _ = self.get_random_choices(features_flat, vessel_mask_flat, self._config.NUM_NEG_PAIRS)
+        return self.distance(features_flat[..., rc10], features_flat[..., rc21], dim=3)
 
 
 class TotalVesselLoss(torch.nn.Module):
@@ -136,7 +129,9 @@ class TotalVesselLoss(torch.nn.Module):
         self._neg_loss = NegativeVesselLoss(self._config)
         self._pos_loss = PositiveVesselLoss(self._config)
 
-    def forward(self, features1, features2, vessel_mask):
-        positive_loss = self._pos_loss(features1, features2, vessel_mask)
-        negative_loss = self._neg_loss(features1, features2, vessel_mask)
+    def forward(self, features, vessel_mask):
+        features_flat, vessel_mask_flat = [
+            self.make_flat(t) for t in [features, vessel_mask]]
+        positive_loss = self._pos_loss(features_flat, vessel_mask_flat)
+        negative_loss = self._neg_loss(features_flat, vessel_mask_flat)
         return self._config.NEGATIVE_LOSS_WEIGHT * negative_loss + positive_loss

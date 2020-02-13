@@ -14,6 +14,9 @@ class Paths:
     CHECKPOINT_PATH = "./ckpt"
     PATH_TO_IMAGES_FIRST = "./data/retina_dataset/fundus"
     PATH_TO_IMAGES_SECOND = "./data/retina_dataset/experimental"
+    PATH_TO_MASKS = ""
+    EXTENSION_FIRST = "png"
+    EXTENSION_MASK = "png"
 
 
 class ModelConfiguration:
@@ -51,3 +54,7 @@ class Configuration(ModelConfiguration, Paths, LossConfiguration):
 
 class PredictorConfiguration(Configuration):
     WEIGHTS_PAH = ""
+
+
+class VesselConfiguration(Configuration):
+    DATASET = "VESSEL"
