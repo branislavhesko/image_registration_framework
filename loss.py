@@ -88,7 +88,7 @@ class GeneralVesselLoss(torch.nn.Module):
 
     @staticmethod
     def make_flat(tensor: torch.Tensor):
-        return tensor.view(tensor.shape[:2], -1)
+        return tensor.view(tensor.shape[-3], -1)
 
     @staticmethod
     def distance(tensor1: torch.Tensor, tensor2: torch.Tensor, dim=0):
@@ -96,36 +96,36 @@ class GeneralVesselLoss(torch.nn.Module):
 
     @staticmethod
     def get_random_choices(features_flat, vessel_mask, num_pairs):
+        mask = vessel_mask.squeeze().cpu().numpy()
         random_choice10 = np.random.choice(features_flat.shape[-1],
-                                           num_pairs, replace=False, p=1 - vessel_mask)
+                                           num_pairs, replace=False, p=(1 - mask) / np.sum(1 - mask))
         random_choice21 = np.random.choice(features_flat.shape[-1],
-                                           num_pairs, replace=False, p=vessel_mask)
+                                           num_pairs, replace=False, p=mask / np.sum(mask))
         random_choice11 = np.random.choice(features_flat.shape[-1],
-                                           num_pairs, replace=False, p=vessel_mask)
+                                           num_pairs, replace=False, p=mask / np.sum(mask))
         random_choice20 = np.random.choice(features_flat.shape[-1],
-                                           num_pairs, replace=False, p=1 - vessel_mask)
+                                           num_pairs, replace=False, p=(1 - mask) / np.sum(1 - mask))
         return random_choice10, random_choice21, random_choice11, random_choice20
 
 
 class PositiveVesselLoss(GeneralVesselLoss):
     def forward(self, features_flat, vessel_mask_flat):
         rc10, rc21, rc11, rc20 = self.get_random_choices(features_flat, vessel_mask_flat, self._config.NUM_POS_PAIRS)
-        return self.distance(features_flat[..., rc10], features_flat[..., rc20], dim=3) + \
-            self.distance(features_flat[..., rc11], features_flat[..., rc21], dim=3)
+        return self.distance(features_flat[..., rc10], features_flat[..., rc20], dim=0) + \
+            self.distance(features_flat[..., rc11], features_flat[..., rc21], dim=0)
 
 
 class NegativeVesselLoss(GeneralVesselLoss):
 
     def forward(self, features_flat, vessel_mask_flat):
         rc10, rc21, _, _ = self.get_random_choices(features_flat, vessel_mask_flat, self._config.NUM_NEG_PAIRS)
-        return self.distance(features_flat[..., rc10], features_flat[..., rc21], dim=3)
+        return self.distance(features_flat[..., rc10], features_flat[..., rc21], dim=0)
 
 
-class TotalVesselLoss(torch.nn.Module):
+class TotalVesselLoss(GeneralVesselLoss):
 
     def __init__(self, config: LossConfiguration):
-        super().__init__()
-        self._config = config
+        super().__init__(config)
         self._neg_loss = NegativeVesselLoss(self._config)
         self._pos_loss = PositiveVesselLoss(self._config)
 
@@ -134,4 +134,4 @@ class TotalVesselLoss(torch.nn.Module):
             self.make_flat(t) for t in [features, vessel_mask]]
         positive_loss = self._pos_loss(features_flat, vessel_mask_flat)
         negative_loss = self._neg_loss(features_flat, vessel_mask_flat)
-        return self._config.NEGATIVE_LOSS_WEIGHT * negative_loss + positive_loss
+        return self._config.NEGATIVE_LOSS_WEIGHT * torch.mean(negative_loss) + torch.mean(positive_loss)

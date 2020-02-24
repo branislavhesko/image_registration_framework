@@ -69,6 +69,7 @@ class VesselDataset(Dataset):
         self._cfg = cfg
         self.images = []
         self.masks = []
+        self.load()
 
     def load(self):
         self.images = sorted(glob.glob(os.path.join(self._cfg.PATH_TO_IMAGES_FIRST, "*." + self._cfg.EXTENSION_FIRST)))
@@ -79,10 +80,10 @@ class VesselDataset(Dataset):
         return len(self.images)
 
     def __getitem__(self, item):
-        image = np.array(Image.open(self.images[item])) / 255. - 0.5
+        image = cv2.cvtColor(np.array(Image.open(self.images[item])), cv2.COLOR_GRAY2RGB) / 255. - 0.5
         mask = cv2.imread(self.masks[item], cv2.IMREAD_GRAYSCALE)
         mask = (mask > 0).astype(np.uint8)
-        return image, mask
+        return torch.from_numpy(image).permute([2, 0, 1]).float(), torch.from_numpy(mask).float()
 
 
 if __name__ == "__main__":

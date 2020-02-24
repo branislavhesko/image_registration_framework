@@ -43,16 +43,28 @@ def visualize_points(image1: np.ndarray, image2: np.ndarray, points: np.ndarray)
     image2[pairs2[:, 0], pairs2[:, 1], :] = np.array((0, 255, 0))
     return image1, image2
 
+#
+# def visualize_features(features1: np.ndarray, features2: np.ndarray):
+#     pca = PCA(n_components=3)
+#     h, w, ch = features1.shape
+#     feats1_reduced = pca.fit_transform(features1.reshape(-1, ch))
+#     feats2_reduced = pca.fit_transform(features2.reshape(-1, ch))
+#     feats1_reduced_n = (feats1_reduced - np.amin(feats1_reduced)) / (np.amax(feats1_reduced) - np.amin(feats1_reduced))
+#     feats2_reduced_n = (feats2_reduced - np.amin(feats2_reduced)) / (np.amax(feats2_reduced) - np.amin(feats2_reduced))
+#     return torch.from_numpy(feats1_reduced_n.reshape(h, w, 3)).permute([2, 0, 1]), \
+#            torch.from_numpy(feats2_reduced_n.reshape(h, w, 3)).permute([2, 0, 1])
 
-def visualize_features(features1: np.ndarray, features2: np.ndarray):
+
+def visualize_features(features_iterable):
     pca = PCA(n_components=3)
-    h, w, ch = features1.shape
-    feats1_reduced = pca.fit_transform(features1.reshape(-1, ch))
-    feats2_reduced = pca.fit_transform(features2.reshape(-1, ch))
-    feats1_reduced_n = (feats1_reduced - np.amin(feats1_reduced)) / (np.amax(feats1_reduced) - np.amin(feats1_reduced))
-    feats2_reduced_n = (feats2_reduced - np.amin(feats2_reduced)) / (np.amax(feats2_reduced) - np.amin(feats2_reduced))
-    return torch.from_numpy(feats1_reduced_n.reshape(h, w, 3)).permute([2, 0, 1]), \
-           torch.from_numpy(feats2_reduced_n.reshape(h, w, 3)).permute([2, 0, 1])
+    output = []
+    for features in features_iterable:
+        h, w, ch = features.shape
+        features_reduces = pca.fit_transform(features.reshape(-1, ch))
+        features_reduced_normalized = (features_reduces - np.amin(features_reduces)) / (
+                    np.amax(features_reduces) - np.amin(features_reduces))
+        output.append(features_reduced_normalized)
+    return output
 
 
 if __name__ == "__main__":

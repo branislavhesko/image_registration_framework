@@ -7,7 +7,7 @@ from tqdm import tqdm
 
 from config import Configuration, Mode
 from dataloaders.data_loader import get_data_loaders
-from loss import HardestContrastiveLoss
+from loss import HardestContrastiveLoss, TotalVesselLoss
 from utils.timer import Timer
 from utils.visualization import visualize_features, visualize_closest_points
 
@@ -30,7 +30,7 @@ class GeneralTrainer:
             optimizer=self._optimizer, gamma=self._cfg.WEIGHT_DECAY)
         self._timer = Timer()
         self._data_loaders = get_data_loaders(self._cfg.DATASET, cfg, modes=self._cfg.MODES)
-        self._loss = HardestContrastiveLoss(cfg)
+        self._loss = TotalVesselLoss(cfg)
 
     def train(self):
         self._model = self._model.cuda() if self._cfg.USE_CUDA else self._model
@@ -100,9 +100,9 @@ class RegistrationTrainer(GeneralTrainer):
 
         self._writer.add_scalar("Loss/Total", loss.item(), idx_total)
         if not (idx % self._cfg.TRAIN_VISUALIZATION_FREQUENCY):
-            feats1_reduced, feats2_reduced = visualize_features(
+            feats1_reduced, feats2_reduced = visualize_features([
                 outputs[0].squeeze().permute([1, 2, 0]).detach().cpu().numpy(),
-                outputs[1].squeeze().permute([1, 2, 0]).detach().cpu().numpy())
+                outputs[1].squeeze().permute([1, 2, 0]).detach().cpu().numpy()])
             self._writer.add_image("Features1", feats1_reduced, idx)
             self._writer.add_image("Features2", feats2_reduced, idx)
             self._writer.add_image("Image1", inputs[0].squeeze(), idx)
@@ -131,6 +131,6 @@ class VesselTrainer(GeneralTrainer):
         if not (idx % self._cfg.TRAIN_VISUALIZATION_FREQUENCY):
             feats = outputs[0].squeeze().permute([1, 2, 0]).detach().cpu().numpy()
             # TODO: refactor to a method taking an iterable!
-            feats1_reduced, _ = visualize_features(feats, feats)
+            feats1_reduced, _ = visualize_features([feats])
             self._writer.add_image("Features", feats1_reduced, idx)
             self._writer.add_image("Image1", inputs[0].squeeze(), idx)

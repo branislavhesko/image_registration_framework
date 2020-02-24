@@ -12,10 +12,10 @@ class Mode(Enum):
 class Paths:
     DATASET = "RETINA"
     CHECKPOINT_PATH = "./ckpt"
-    PATH_TO_IMAGES_FIRST = "./data/retina_dataset/fundus"
+    PATH_TO_IMAGES_FIRST = "./data/retina_dataset/experimental"
     PATH_TO_IMAGES_SECOND = "./data/retina_dataset/experimental"
-    PATH_TO_MASKS = ""
-    EXTENSION_FIRST = "png"
+    PATH_TO_MASKS = "./data/retina_dataset/experimental_segmentation"
+    EXTENSION_FIRST = "tif"
     EXTENSION_MASK = "png"
 
 
