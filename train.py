@@ -1,5 +1,5 @@
-from abc import abstractmethod
 import os
+from abc import abstractmethod
 
 import torch
 from torch.utils.tensorboard import SummaryWriter
@@ -7,7 +7,7 @@ from tqdm import tqdm
 
 from config import Configuration, Mode
 from dataloaders.data_loader import get_data_loaders
-from loss import HardestContrastiveLoss, TotalVesselLoss
+from loss import TotalVesselLoss
 from utils.timer import Timer
 from utils.visualization import visualize_features, visualize_closest_points
 
@@ -25,7 +25,7 @@ class GeneralTrainer:
                                       normalize_feature=self._cfg.NORMALIZE_FEATURES)
         self._optimizer = torch.optim.SGD(
             self._model.parameters(), momentum=self._cfg.MOMENTUM, lr=self._cfg.INITIAL_LR,
-            weight_decay=self._cfg.WEIGHT_DECAY)
+            weight_decay=self._cfg.WEIGHT_DECAY, nesterov=True)
         self._lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(
             optimizer=self._optimizer, gamma=self._cfg.WEIGHT_DECAY)
         self._timer = Timer()
@@ -37,6 +37,7 @@ class GeneralTrainer:
         for epoch in tqdm(range(self._cfg.EPOCHS)):
             self._timer.tic()
             self.train_single_epoch(epoch)
+            self._lr_scheduler.step()
             self._timer.toc()
 
     def train_single_epoch(self, epoch):
@@ -48,10 +49,11 @@ class GeneralTrainer:
             self._optimizer.zero_grad()
             outputs = self.forward(inputs)
             loss = self.calculate_loss(outputs, inputs)
-
             # self._writer.add_scalar("Loss/Positive", positive_loss.item(), idx_total)
             # self._writer.add_scalar("Loss/Negative", negative_loss.item(), idx_total)
             loss.backward()
+            print("Loss: {}".format(loss.item()))
+
             self._optimizer.step()
             self.visualize(inputs, outputs, loss, idx, idx_total)
 
@@ -131,6 +133,6 @@ class VesselTrainer(GeneralTrainer):
         if not (idx % self._cfg.TRAIN_VISUALIZATION_FREQUENCY):
             feats = outputs[0].squeeze().permute([1, 2, 0]).detach().cpu().numpy()
             # TODO: refactor to a method taking an iterable!
-            feats1_reduced, _ = visualize_features([feats])
-            self._writer.add_image("Features", feats1_reduced, idx)
+            feats1_reduced = visualize_features([feats])
+            self._writer.add_image("Features", torch.from_numpy(feats1_reduced[0]).permute([2, 0, 1]), idx)
             self._writer.add_image("Image1", inputs[0].squeeze(), idx)

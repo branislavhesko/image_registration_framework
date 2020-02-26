@@ -21,21 +21,21 @@ class Paths:
 
 class ModelConfiguration:
     IN_CHANNELS = 3
-    INITIAL_LR = 1e-4
+    INITIAL_LR = 1e-3
     LR_DECAY = 0.97
     MODEL = ResUNetBN2F
     MOMENTUM = 0.95
     NORMALIZE_FEATURES = True
-    OUT_FEATURES = 3
+    OUT_FEATURES = 64
     WEIGHT_DECAY = 1e-4
 
 
 class LossConfiguration:
-    NUM_POS_PAIRS = 128
-    NUM_NEG_PAIRS = 64
+    NUM_POS_PAIRS = 2048
+    NUM_NEG_PAIRS = 2048
     PIXEL_LIMIT = 10
     NUM_NEG_INDICES_FOR_LOSS = 5
-    NEGATIVE_LOSS_WEIGHT = 1
+    NEGATIVE_LOSS_WEIGHT = -2
 
 
 class Configuration(ModelConfiguration, Paths, LossConfiguration):

@@ -1,4 +1,3 @@
-from abc import abstractmethod
 import glob
 import os
 
@@ -80,9 +79,11 @@ class VesselDataset(Dataset):
         return len(self.images)
 
     def __getitem__(self, item):
-        image = cv2.cvtColor(np.array(Image.open(self.images[item])), cv2.COLOR_GRAY2RGB) / 255. - 0.5
+        image = cv2.cvtColor(np.array(Image.open(self.images[item])), cv2.COLOR_GRAY2RGB) / 255.
         mask = cv2.imread(self.masks[item], cv2.IMREAD_GRAYSCALE)
         mask = (mask > 0).astype(np.uint8)
+        print(f"{self.images[item]} and size: {np.mean(image)}")
+        print(f"{self.masks[item]} and size: {np.mean(mask)}")
         return torch.from_numpy(image).permute([2, 0, 1]).float(), torch.from_numpy(mask).float()
 
 

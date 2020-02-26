@@ -1,5 +1,4 @@
 import numpy as np
-import torch
 from matplotlib import pyplot as plt
 from sklearn.decomposition import PCA
 
@@ -57,13 +56,13 @@ def visualize_points(image1: np.ndarray, image2: np.ndarray, points: np.ndarray)
 
 def visualize_features(features_iterable):
     pca = PCA(n_components=3)
+
     output = []
     for features in features_iterable:
         h, w, ch = features.shape
         features_reduces = pca.fit_transform(features.reshape(-1, ch))
-        features_reduced_normalized = (features_reduces - np.amin(features_reduces)) / (
-                    np.amax(features_reduces) - np.amin(features_reduces))
-        output.append(features_reduced_normalized)
+        features_reduced_normalized = (features_reduces - np.amin(features_reduces)) / (np.amax(features_reduces) - np.amin(features_reduces))
+        output.append(features_reduced_normalized.reshape(h, w, 3))
     return output
 
 

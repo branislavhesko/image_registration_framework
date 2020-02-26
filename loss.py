@@ -92,7 +92,7 @@ class GeneralVesselLoss(torch.nn.Module):
 
     @staticmethod
     def distance(tensor1: torch.Tensor, tensor2: torch.Tensor, dim=0):
-        return torch.sqrt(torch.sum(torch.pow(tensor1 - tensor2, 2), dim=dim))
+        return torch.sqrt(torch.sum(torch.pow(tensor1 - tensor2, 2), dim=dim) + 1e-5)
 
     @staticmethod
     def get_random_choices(features_flat, vessel_mask, num_pairs):
@@ -130,8 +130,11 @@ class TotalVesselLoss(GeneralVesselLoss):
         self._pos_loss = PositiveVesselLoss(self._config)
 
     def forward(self, features, vessel_mask):
+        print("Mean feats: {}".format(torch.mean(features)))
         features_flat, vessel_mask_flat = [
             self.make_flat(t) for t in [features, vessel_mask]]
         positive_loss = self._pos_loss(features_flat, vessel_mask_flat)
+        print("Positive loss: {}".format(torch.max(positive_loss)))
         negative_loss = self._neg_loss(features_flat, vessel_mask_flat)
+        print("Negative loss: {}".format(torch.max(negative_loss)))
         return self._config.NEGATIVE_LOSS_WEIGHT * torch.mean(negative_loss) + torch.mean(positive_loss)
