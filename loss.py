@@ -138,3 +138,23 @@ class TotalVesselLoss(GeneralVesselLoss):
         negative_loss = self._neg_loss(features_flat, vessel_mask_flat)
         print("Negative loss: {}".format(torch.max(negative_loss)))
         return self._config.NEGATIVE_LOSS_WEIGHT * torch.mean(negative_loss) + torch.mean(positive_loss)
+
+
+class HardestNegativeVesselLoss(GeneralVesselLoss):
+
+    def forward(self, features_flat, vessel_mask_flat):
+        pass
+
+
+class HardestPositiveVesseloss(GeneralVesselLoss):
+
+    def forward(self, features_flat, vessel_mask_flat):
+        pass
+
+    def get_random_hardest_choices(self, features_flat, mask, num_pairs):
+        random_choice = np.random.choice(features_flat.shape[-1], num_pairs, p=mask / np.sum(mask))
+        indices = []
+        for choice in random_choice:
+            indices.append(torch.argmax(torch.abs(features_flat - features_flat[choice]) * (-1) * mask))
+        return random_choice, indices
+

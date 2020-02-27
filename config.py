@@ -1,6 +1,6 @@
 from enum import auto, Enum
 
-from model.resunet import ResUNetBN2F
+from model.resunet import ResUNetBN2C
 
 
 class Mode(Enum):
@@ -21,9 +21,9 @@ class Paths:
 
 class ModelConfiguration:
     IN_CHANNELS = 3
-    INITIAL_LR = 1e-3
+    INITIAL_LR = 1e-4
     LR_DECAY = 0.97
-    MODEL = ResUNetBN2F
+    MODEL = ResUNetBN2C
     MOMENTUM = 0.95
     NORMALIZE_FEATURES = True
     OUT_FEATURES = 64
@@ -31,8 +31,8 @@ class ModelConfiguration:
 
 
 class LossConfiguration:
-    NUM_POS_PAIRS = 2048
-    NUM_NEG_PAIRS = 2048
+    NUM_POS_PAIRS = 4096
+    NUM_NEG_PAIRS = 4096
     PIXEL_LIMIT = 10
     NUM_NEG_INDICES_FOR_LOSS = 5
     NEGATIVE_LOSS_WEIGHT = -2
