@@ -87,6 +87,19 @@ class VesselDataset(Dataset):
         return torch.from_numpy(image).permute([2, 0, 1]).float(), torch.from_numpy(mask).float()
 
 
+class ArteryVeinDataset(VesselDataset):
+    COLORS = ({255, 0, 0}, {0, 0, 255}, {100, 100, 100})
+
+    def __getitem__(self, item):
+        image = cv2.cvtColor(np.array(Image.open(self.images[item])), cv2.COLOR_GRAY2RGB) / 255.
+        mask = cv2.imread(self.masks[item], cv2.IMREAD_COLOR)
+        label = np.zeros(mask.shape[:2])
+        label[(mask[0, :, :] > 0) & (mask[0, :, :] > 0) & (mask[0, :, :] > 0)] = 1
+        label[(mask[0, :, :] > 0) & (mask[0, :, :] > 0) & (mask[0, :, :] > 0)] = 2
+        label[(mask[0, :, :] > 0) & (mask[0, :, :] > 0) & (mask[0, :, :] > 0)] = 3
+        return torch.from_numpy(image).permute([2, 0, 1]), torch.from_numpy(label)
+
+
 if __name__ == "__main__":
     dataset = RetinaDatasetPop2(Configuration())
     dataset.load()

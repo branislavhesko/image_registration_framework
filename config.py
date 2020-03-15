@@ -58,3 +58,7 @@ class PredictorConfiguration(Configuration):
 
 class VesselConfiguration(Configuration):
     DATASET = "VESSEL"
+
+
+class ArteryVeinDataset(Configuration):
+    PATH_TO_IMAGES_FIRST = "./data/vessel_artery_dataset/"

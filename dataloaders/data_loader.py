@@ -1,11 +1,12 @@
-from torch.utils.data import DataLoader
 from typing import List
 
-from config import Configuration, Mode
-from dataloaders.dataset import RetinaDatasetPop2, VesselDataset
+from torch.utils.data import DataLoader
 
+from config import Configuration, Mode
+from dataloaders.dataset import ArteryVeinDataset, RetinaDatasetPop2, VesselDataset
 
 available_datasets = {
+    "ARTERY_VEIN": ArteryVeinDataset,
     "RETINA": RetinaDatasetPop2,
     "VESSEL": VesselDataset
 }
