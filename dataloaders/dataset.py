@@ -7,7 +7,7 @@ import torch
 from PIL import Image
 from torch.utils.data import Dataset
 
-from config import Configuration
+from config import ArteryVeinConfiguration, Configuration
 from utils.transforms import flatten
 
 
@@ -90,17 +90,56 @@ class VesselDataset(Dataset):
 class ArteryVeinDataset(VesselDataset):
     COLORS = ({255, 0, 0}, {0, 0, 255}, {100, 100, 100})
 
+    @staticmethod
+    def read_transparent_png(filename):
+        image_4channel = cv2.imread(filename, cv2.IMREAD_UNCHANGED)
+        if image_4channel.shape[-1] == 3:
+            return image_4channel[:, :, ::-1]
+        alpha_channel = image_4channel[:, :, 3]
+        rgb_channels = image_4channel[:, :, :3]
+
+        # White Background Image
+        white_background_image = np.ones_like(rgb_channels, dtype=np.uint8) * 255
+
+        # Alpha factor
+        alpha_factor = alpha_channel[:, :, np.newaxis].astype(np.float32) / 255.0
+        alpha_factor = np.concatenate((alpha_factor, alpha_factor, alpha_factor), axis=2)
+
+        # Transparent Image Rendered on White Background
+        base = rgb_channels.astype(np.float32) * alpha_factor
+        white = white_background_image.astype(np.float32) * (1 - alpha_factor)
+        final_image = base + white
+        return final_image.astype(np.uint8)
+
+    def load(self):
+        sub_folders = next(os.walk(self._cfg.PATH_TO_IMAGES_FIRST))[1]
+        for sub_folder in sub_folders:
+            image = glob.glob(os.path.join(self._cfg.PATH_TO_IMAGES_FIRST, sub_folder, "*reg.png"))
+            mask = glob.glob(os.path.join(self._cfg.PATH_TO_IMAGES_FIRST, sub_folder, "*reg_AV.png"))
+            if any(image) and any(mask):
+                self.images.append(image[0])
+                self.masks.append(mask[0])
+                print(f"Image: {image} with corresponding mask found.")
+
     def __getitem__(self, item):
-        image = cv2.cvtColor(np.array(Image.open(self.images[item])), cv2.COLOR_GRAY2RGB) / 255.
-        mask = cv2.imread(self.masks[item], cv2.IMREAD_COLOR)
+        print("Processing image: {}, mask: {}".format(self.images[item], self.masks[item]))
+        image = np.array(Image.open(self.images[item])) / 255.
+        mask = self.read_transparent_png(self.masks[item])
+        plt.imshow(mask)
+        plt.show()
         label = np.zeros(mask.shape[:2])
-        label[(mask[0, :, :] > 0) & (mask[0, :, :] > 0) & (mask[0, :, :] > 0)] = 1
-        label[(mask[0, :, :] > 0) & (mask[0, :, :] > 0) & (mask[0, :, :] > 0)] = 2
-        label[(mask[0, :, :] > 0) & (mask[0, :, :] > 0) & (mask[0, :, :] > 0)] = 3
+        label[(mask[:, :, 0] > 250) & (mask[:, :, 1] < 10) & (mask[:, :, 2] < 10)] = 1
+        label[(mask[:, :, 0] < 10) & (mask[:, :, 1] < 10) & (mask[:, :, 2] > 250)] = 2
+        label[(mask[:, :, 0] > 250) & (mask[:, :, 1] < 10) & (mask[:, :, 2] > 250)] = 3
         return torch.from_numpy(image).permute([2, 0, 1]), torch.from_numpy(label)
 
 
 if __name__ == "__main__":
-    dataset = RetinaDatasetPop2(Configuration())
+    dataset = ArteryVeinDataset(ArteryVeinConfiguration())
     dataset.load()
-    print(dataset.find_positive_pairs(np.zeros((1000, 1000)), np.zeros((1000, 1000)), 20))
+    from matplotlib import pyplot as plt
+    for index in range(len(dataset)):
+        _, mask = dataset[index]
+        print(index)
+        plt.imshow(mask.numpy())
+        plt.show()

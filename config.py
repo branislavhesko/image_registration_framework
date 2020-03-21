@@ -60,5 +60,5 @@ class VesselConfiguration(Configuration):
     DATASET = "VESSEL"
 
 
-class ArteryVeinDataset(Configuration):
+class ArteryVeinConfiguration(Configuration):
     PATH_TO_IMAGES_FIRST = "./data/vessel_artery_dataset/"

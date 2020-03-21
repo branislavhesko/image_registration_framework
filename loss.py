@@ -1,8 +1,8 @@
 import numpy as np
 import torch
-import torch.nn.functional as F
+import torch.nn.functional as functional
 
-from config import LossConfiguration
+from config import ArteryVeinConfiguration, LossConfiguration
 
 
 class HardestContrastiveLoss(torch.nn.Module):
@@ -45,17 +45,17 @@ class NegativeHardestContrastiveLoss(torch.nn.Module):
         self._config = config
 
     def forward(self, feats1, feats2, positive_pairs):
-        B, C, H, W = feats1.shape
-        feats1_flat = feats1.view(C, -1)
-        feats2_flat = feats2.view(C, -1)
+        b, c, h, w = feats1.shape
+        feats1_flat = feats1.view(c, -1)
+        feats2_flat = feats2.view(c, -1)
         negative_loss = 0
         negative_indices1 = positive_pairs[0, :, 0].cpu().numpy()
         for index, negative_idx in enumerate(negative_indices1):
-            mask = np.array([np.arange(negative_idx + W * (i - self.PIXEL_LIMIT) - self.PIXEL_LIMIT,
-                                       negative_idx + W * (i - self.PIXEL_LIMIT) + self.PIXEL_LIMIT)
+            mask = np.array([np.arange(negative_idx + w * (i - self.PIXEL_LIMIT) - self.PIXEL_LIMIT,
+                                       negative_idx + w * (i - self.PIXEL_LIMIT) + self.PIXEL_LIMIT)
                              for i in range(self.PIXEL_LIMIT * 2)]).reshape(1, -1)
             mask = mask[(mask > 0) & (mask < feats1_flat.shape[-1])]
-            dist = F.relu(torch.sum(torch.pow(feats1_flat[
+            dist = functional.relu(torch.sum(torch.pow(feats1_flat[
                                               :, negative_idx].unsqueeze(dim=1) - feats2_flat, 2), dim=0))
             dist_sorted_indices = dist.argsort()
             negative_indices2 = []
@@ -66,9 +66,9 @@ class NegativeHardestContrastiveLoss(torch.nn.Module):
                 if not dist[dist_sorted_indices[idx]].item() in mask:
                     counter += 1
                     negative_indices2.append(dist_sorted_indices[idx])
-                    mask_new = np.array([np.arange(dist_sorted_indices[idx].item() + W * (
+                    mask_new = np.array([np.arange(dist_sorted_indices[idx].item() + w * (
                             i - self.PIXEL_LIMIT) - self.PIXEL_LIMIT,
-                                                   dist_sorted_indices[idx].item() + W * (
+                                                   dist_sorted_indices[idx].item() + w * (
                                                            i - self.PIXEL_LIMIT) + self.PIXEL_LIMIT)
                                          for i in range(self.PIXEL_LIMIT * 2)]).reshape(1, -1)
                     mask_new = mask_new[(mask_new > 0) & (mask_new < feats1_flat.shape[-1])]
@@ -151,10 +151,67 @@ class HardestPositiveVesseloss(GeneralVesselLoss):
     def forward(self, features_flat, vessel_mask_flat):
         pass
 
-    def get_random_hardest_choices(self, features_flat, mask, num_pairs):
+    @staticmethod
+    def get_random_hardest_choices(features_flat, mask, num_pairs):
         random_choice = np.random.choice(features_flat.shape[-1], num_pairs, p=mask / np.sum(mask))
         indices = []
         for choice in random_choice:
             indices.append(torch.argmax(torch.abs(features_flat - features_flat[choice]) * (-1) * mask))
         return random_choice, indices
 
+
+class ArteryVeinLoss(GeneralVesselLoss):
+
+    def __init__(self, config: ArteryVeinConfiguration):
+        super().__init__(config)
+        self._positive_loss = PositiveArteryVeinLoss(config)
+        self._negative_loss = NegativeArteryVeinLoss(config)
+
+    def forward(self, features, mask):
+        features_flat, mask_flat = self.make_flat(features), self.make_flat(mask)
+        positive_loss = self._positive_loss(features_flat, mask_flat)
+        negative_loss = self._negative_loss(features_flat, mask_flat)
+        return positive_loss + self._config.NEGATIVE_LOSS_COEF * negative_loss
+
+
+class PositiveArteryVeinLoss(GeneralVesselLoss):
+
+    def __init__(self, config: ArteryVeinConfiguration):
+        super().__init__(config)
+
+    def forward(self, features_flat, mask_flat):
+        vein_mask = self._normalize_probability(mask_flat == 1)
+        artery_mask = self._normalize_probability(mask_flat == 2)
+        background_mask = self._normalize_probability(mask_flat == 0)
+        background_choice1 = np.random.choice(features_flat.shape[-1], self._config.NUM_POS_PAIRS, p=background_mask)
+        background_choice2 = np.random.choice(features_flat.shape[-1], self._config.NUM_POS_PAIRS, p=background_mask)
+
+        vein_choice1 = np.random.choice(features_flat.shape[-1], self._config.NUM_POS_PAIRS, p=vein_mask)
+        vein_choice2 = np.random.choice(features_flat.shape[-1], self._config.NUM_POS_PAIRS, p=vein_mask)
+
+        artery_choice1 = np.random.choice(features_flat.shape[-1], self._config.NUM_POS_PAIRS, p=artery_mask)
+        artery_choice2 = np.random.choice(features_flat.shape[-1], self._config.NUM_POS_PAIRS, p=artery_mask)
+        return self.distance(features_flat[..., vein_choice1], features_flat[..., vein_choice2]) + \
+            self.distance(features_flat[..., artery_choice1], features_flat[..., artery_choice2]) + \
+            self.distance(features_flat[..., background_choice1], features_flat[..., background_choice2])
+
+    @staticmethod
+    def _normalize_probability(mask):
+        return mask / np.sum(mask)
+
+
+class NegativeArteryVeinLoss(GeneralVesselLoss):
+
+    def __init__(self, config):
+        super().__init__(config)
+
+    def forward(self, features_flat, mask_flat):
+        vein_mask = self._normalize_probability(mask_flat == 1)
+        artery_mask = self._normalize_probability(mask_flat == 2)
+        background_mask = self._normalize_probability(mask_flat == 0)
+        background_choice = np.random.choice(features_flat.shape[-1], self._config.NUM_POS_PAIRS, p=background_mask)
+        vein_choice = np.random.choice(features_flat.shape[-1], self._config.NUM_POS_PAIRS, p=vein_mask)
+        artery_choice = np.random.choice(features_flat.shape[-1], self._config.NUM_POS_PAIRS, p=artery_mask)
+        return self.distance(features_flat[..., background_choice], features_flat[..., vein_choice]) + \
+            2 * self.distance(features_flat[..., vein_choice], features_flat[..., artery_choice]) + \
+            self.distance(features_flat[..., background_choice], features_flat[..., artery_choice])
