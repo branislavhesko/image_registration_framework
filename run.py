@@ -1,5 +1,5 @@
-from config import Configuration, VesselConfiguration
-from train import GeneralTrainer, VesselTrainer
+from config import ArteryVeinConfiguration, Configuration, VesselConfiguration
+from train import VeinArteryTrainer, GeneralTrainer, VesselTrainer
 
-trainer = VesselTrainer(VesselConfiguration())
+trainer = VeinArteryTrainer(ArteryVeinConfiguration())
 trainer.train()

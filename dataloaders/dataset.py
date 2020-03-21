@@ -125,13 +125,11 @@ class ArteryVeinDataset(VesselDataset):
         print("Processing image: {}, mask: {}".format(self.images[item], self.masks[item]))
         image = np.array(Image.open(self.images[item])) / 255.
         mask = self.read_transparent_png(self.masks[item])
-        plt.imshow(mask)
-        plt.show()
         label = np.zeros(mask.shape[:2])
         label[(mask[:, :, 0] > 250) & (mask[:, :, 1] < 10) & (mask[:, :, 2] < 10)] = 1
         label[(mask[:, :, 0] < 10) & (mask[:, :, 1] < 10) & (mask[:, :, 2] > 250)] = 2
         label[(mask[:, :, 0] > 250) & (mask[:, :, 1] < 10) & (mask[:, :, 2] > 250)] = 3
-        return torch.from_numpy(image).permute([2, 0, 1]), torch.from_numpy(label)
+        return torch.from_numpy(image).permute([2, 0, 1]).float(), torch.from_numpy(label).long()
 
 
 if __name__ == "__main__":

@@ -7,7 +7,7 @@ from tqdm import tqdm
 
 from config import Configuration, Mode
 from dataloaders.data_loader import get_data_loaders
-from loss import TotalVesselLoss
+from loss import ArteryVeinLoss, TotalVesselLoss
 from utils.timer import Timer
 from utils.visualization import visualize_features, visualize_closest_points
 
@@ -37,7 +37,7 @@ class GeneralTrainer:
         for epoch in tqdm(range(self._cfg.EPOCHS)):
             self._timer.tic()
             self.train_single_epoch(epoch)
-            self._lr_scheduler.step()
+            self._lr_scheduler.step(epoch=epoch)
             self._timer.toc()
 
     def train_single_epoch(self, epoch):
@@ -55,7 +55,7 @@ class GeneralTrainer:
             print("Loss: {}".format(loss.item()))
 
             self._optimizer.step()
-            self.visualize(inputs, outputs, loss, idx, idx_total)
+            self.visualize(inputs, outputs, loss, idx, idx_total, epoch)
 
     @abstractmethod
     def forward(self, *args, **kwargs):
@@ -126,7 +126,7 @@ class VesselTrainer(GeneralTrainer):
     def calculate_loss(self, outputs, inputs):
         return self._loss(outputs, inputs[1])
 
-    def visualize(self, inputs, outputs, loss, idx, idx_total):
+    def visualize(self, inputs, outputs, loss, idx, idx_total, *args):
         self._writer.add_scalar("Mean/feats1", outputs[0].detach().cpu().mean(), idx_total)
 
         self._writer.add_scalar("Loss/Total", loss.item(), idx_total)
@@ -136,3 +136,31 @@ class VesselTrainer(GeneralTrainer):
             feats1_reduced = visualize_features([feats])
             self._writer.add_image("Features", torch.from_numpy(feats1_reduced[0]).permute([2, 0, 1]), idx)
             self._writer.add_image("Image1", inputs[0].squeeze(), idx)
+
+
+class VeinArteryTrainer(GeneralTrainer):
+
+    def __init__(self, config):
+        super().__init__(config)
+        self._loss = ArteryVeinLoss(config)
+
+    def forward(self, inputs):
+        image, mask = inputs
+        return self._model(image)
+
+    def calculate_loss(self, outputs, inputs):
+        image, mask = inputs
+        return self._loss(outputs, mask)
+
+    def visualize(self, inputs, outputs, loss, idx, idx_total, epoch=0):
+        self._writer.add_scalar("Mean/feats1", outputs[0].detach().cpu().mean(), idx_total)
+        self._writer.add_scalar("Loss/Total", loss.item(), idx_total)
+        mask = inputs[1].squeeze()
+        mask_colored = torch.zeros(3, *mask.shape, dtype=torch.float)
+        mask_colored[0, mask == 1] = 1.
+        mask_colored[1, mask == 2] = 1.
+        mask_colored[2, mask == 3] = 1.
+        self._writer.add_image(f"Mask/{idx}", mask_colored, epoch)
+        self._writer.add_image(f"Original_image/{idx}", inputs[0].squeeze(), epoch)
+        feats_pca = visualize_features([outputs.squeeze().permute([1, 2, 0]).detach().cpu().numpy()])[0]
+        self._writer.add_image(f"Features/{idx}", torch.from_numpy(feats_pca).permute([2, 0, 1]), epoch)

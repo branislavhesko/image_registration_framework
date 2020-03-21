@@ -107,6 +107,10 @@ class GeneralVesselLoss(torch.nn.Module):
                                            num_pairs, replace=False, p=(1 - mask) / np.sum(1 - mask))
         return random_choice10, random_choice21, random_choice11, random_choice20
 
+    @staticmethod
+    def _normalize_probability(mask):
+        return mask / np.sum(mask)
+
 
 class PositiveVesselLoss(GeneralVesselLoss):
     def forward(self, features_flat, vessel_mask_flat):
@@ -168,10 +172,10 @@ class ArteryVeinLoss(GeneralVesselLoss):
         self._negative_loss = NegativeArteryVeinLoss(config)
 
     def forward(self, features, mask):
-        features_flat, mask_flat = self.make_flat(features), self.make_flat(mask)
+        features_flat, mask_flat = self.make_flat(features), self.make_flat(mask).squeeze().cpu().numpy()
         positive_loss = self._positive_loss(features_flat, mask_flat)
         negative_loss = self._negative_loss(features_flat, mask_flat)
-        return positive_loss + self._config.NEGATIVE_LOSS_COEF * negative_loss
+        return torch.mean(positive_loss) + self._config.NEGATIVE_LOSS_COEF * torch.mean(negative_loss)
 
 
 class PositiveArteryVeinLoss(GeneralVesselLoss):
@@ -194,10 +198,6 @@ class PositiveArteryVeinLoss(GeneralVesselLoss):
         return self.distance(features_flat[..., vein_choice1], features_flat[..., vein_choice2]) + \
             self.distance(features_flat[..., artery_choice1], features_flat[..., artery_choice2]) + \
             self.distance(features_flat[..., background_choice1], features_flat[..., background_choice2])
-
-    @staticmethod
-    def _normalize_probability(mask):
-        return mask / np.sum(mask)
 
 
 class NegativeArteryVeinLoss(GeneralVesselLoss):

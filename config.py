@@ -61,4 +61,8 @@ class VesselConfiguration(Configuration):
 
 
 class ArteryVeinConfiguration(Configuration):
+    DATASET = "ARTERY_VEIN"
     PATH_TO_IMAGES_FIRST = "./data/vessel_artery_dataset/"
+    NUM_NEG_PAIRS = 4096
+    NUM_POS_PAIRS = 4096
+

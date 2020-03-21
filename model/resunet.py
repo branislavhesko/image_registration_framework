@@ -196,20 +196,14 @@ class ResUNet2(nn.Module):
         nn.init.constant_(m.bias, 0)
 
   def forward(self, x):
-    print("LOL0: {}".format(torch.mean(x)))
-
     out_s1 = self.conv1(x)
     if torch.isnan(torch.mean(out_s1)).item():
         print("LOL1: {}".format(torch.mean(out_s1)))
     out_s1 = self.norm1(out_s1)
-    print("LOL1: {}".format(torch.mean(out_s1)))
 
     out_s1 = F.relu(out_s1)
-    print("LOL1: {}".format(torch.mean(out_s1)))
 
     out_s1 = self.blocks1(out_s1)
-    print("LOL1: {}".format(torch.mean(out_s1)))
-
     out_s2 = self.conv2(out_s1)
     out_s2 = self.norm2(out_s2)
     out_s2 = F.relu(out_s2)
@@ -219,7 +213,6 @@ class ResUNet2(nn.Module):
     out_s4 = self.norm3(out_s4)
     out_s4 = F.relu(out_s4)
     out_s4 = self.blocks3(out_s4)
-    print("LOL2: {}".format(torch.mean(out_s4)))
 
     out_s8 = self.conv4(out_s4)
     out_s8 = self.norm4(out_s8)
@@ -233,8 +226,6 @@ class ResUNet2(nn.Module):
 
     out = torch.cat((out_s4_tr[:, :, :out_s4.shape[2], :out_s4.shape[3]], out_s4),
                     dim=1)
-    print("LOL3: {}".format(torch.mean(out)))
-
     out_s2_tr = self.conv3_tr(out)
     out_s2_tr = self.norm3_tr(out_s2_tr)
     out_s2_tr = F.relu(out_s2_tr)
