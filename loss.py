@@ -92,7 +92,7 @@ class GeneralVesselLoss(torch.nn.Module):
 
     @staticmethod
     def distance(tensor1: torch.Tensor, tensor2: torch.Tensor, dim=0):
-        return torch.sqrt(torch.sum(torch.pow(tensor1 - tensor2, 2), dim=dim) + 1e-5)
+        return torch.sqrt(torch.sum(torch.abs(tensor1 - tensor2), dim=dim) + 1e-7)
 
     @staticmethod
     def get_random_choices(features_flat, vessel_mask, num_pairs):
@@ -175,7 +175,8 @@ class ArteryVeinLoss(GeneralVesselLoss):
         features_flat, mask_flat = self.make_flat(features), self.make_flat(mask).squeeze().cpu().numpy()
         positive_loss = self._positive_loss(features_flat, mask_flat)
         negative_loss = self._negative_loss(features_flat, mask_flat)
-        return torch.mean(positive_loss) + self._config.NEGATIVE_LOSS_COEF * torch.mean(negative_loss)
+        return positive_loss.mean() + self._config.NEGATIVE_LOSS_COEF * functional.relu(
+            self._config.NEG_LOSS_CONSTANT - negative_loss.mean())
 
 
 class PositiveArteryVeinLoss(GeneralVesselLoss):
@@ -187,12 +188,12 @@ class PositiveArteryVeinLoss(GeneralVesselLoss):
         vein_mask = self._normalize_probability(mask_flat == 1)
         artery_mask = self._normalize_probability(mask_flat == 2)
         background_mask = self._normalize_probability(mask_flat == 0)
+        print(f"veins: {np.sum(mask_flat == 1)}, arteries: {np.sum(mask_flat == 2)}")
         background_choice1 = np.random.choice(features_flat.shape[-1], self._config.NUM_POS_PAIRS, p=background_mask)
         background_choice2 = np.random.choice(features_flat.shape[-1], self._config.NUM_POS_PAIRS, p=background_mask)
 
         vein_choice1 = np.random.choice(features_flat.shape[-1], self._config.NUM_POS_PAIRS, p=vein_mask)
         vein_choice2 = np.random.choice(features_flat.shape[-1], self._config.NUM_POS_PAIRS, p=vein_mask)
-
         artery_choice1 = np.random.choice(features_flat.shape[-1], self._config.NUM_POS_PAIRS, p=artery_mask)
         artery_choice2 = np.random.choice(features_flat.shape[-1], self._config.NUM_POS_PAIRS, p=artery_mask)
         return self.distance(features_flat[..., vein_choice1], features_flat[..., vein_choice2]) + \
@@ -213,5 +214,5 @@ class NegativeArteryVeinLoss(GeneralVesselLoss):
         vein_choice = np.random.choice(features_flat.shape[-1], self._config.NUM_POS_PAIRS, p=vein_mask)
         artery_choice = np.random.choice(features_flat.shape[-1], self._config.NUM_POS_PAIRS, p=artery_mask)
         return self.distance(features_flat[..., background_choice], features_flat[..., vein_choice]) + \
-            2 * self.distance(features_flat[..., vein_choice], features_flat[..., artery_choice]) + \
+            self.distance(features_flat[..., vein_choice], features_flat[..., artery_choice]) + \
             self.distance(features_flat[..., background_choice], features_flat[..., artery_choice])

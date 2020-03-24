@@ -21,7 +21,7 @@ class Paths:
 
 class ModelConfiguration:
     IN_CHANNELS = 3
-    INITIAL_LR = 1e-4
+    INITIAL_LR = 1e-3
     LR_DECAY = 0.97
     MODEL = ResUNetBN2C
     MOMENTUM = 0.95
@@ -62,7 +62,10 @@ class VesselConfiguration(Configuration):
 
 class ArteryVeinConfiguration(Configuration):
     DATASET = "ARTERY_VEIN"
+    EPOCHS = 200
+    NORMALIZE_FEATURES = True
     PATH_TO_IMAGES_FIRST = "./data/vessel_artery_dataset/"
     NUM_NEG_PAIRS = 4096
     NUM_POS_PAIRS = 4096
+    NEG_LOSS_CONSTANT = 1.7
 

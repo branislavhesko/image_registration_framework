@@ -164,3 +164,5 @@ class VeinArteryTrainer(GeneralTrainer):
         self._writer.add_image(f"Original_image/{idx}", inputs[0].squeeze(), epoch)
         feats_pca = visualize_features([outputs.squeeze().permute([1, 2, 0]).detach().cpu().numpy()])[0]
         self._writer.add_image(f"Features/{idx}", torch.from_numpy(feats_pca).permute([2, 0, 1]), epoch)
+        feats_pca[mask.cpu().numpy() < 1, :] = 0
+        self._writer.add_image(f"Features_masked/{idx}", torch.from_numpy(feats_pca).permute([2, 0, 1]), epoch)
