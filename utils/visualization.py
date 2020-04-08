@@ -59,7 +59,7 @@ def visualize_features(features_iterable):
 
     output = []
     for features in features_iterable:
-        h, w, ch = features.shape
+        h, w, ch = features.shape if len(features.shape) == 3 else (-1, *features.shape)
         features_reduces = pca.fit_transform(features.reshape(-1, ch))
         features_reduced_normalized = (features_reduces - np.amin(features_reduces)) / (np.amax(features_reduces) - np.amin(features_reduces))
         output.append(features_reduced_normalized.reshape(h, w, 3))

@@ -1,6 +1,7 @@
 import os
 from abc import abstractmethod
 
+import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
@@ -34,6 +35,7 @@ class GeneralTrainer:
 
     def train(self):
         self._model = self._model.cuda() if self._cfg.USE_CUDA else self._model
+        print(self._model)
         for epoch in tqdm(range(self._cfg.EPOCHS)):
             self._timer.tic()
             self.train_single_epoch(epoch)
@@ -162,7 +164,11 @@ class VeinArteryTrainer(GeneralTrainer):
         mask_colored[2, mask == 3] = 1.
         self._writer.add_image(f"Mask/{idx}", mask_colored, epoch)
         self._writer.add_image(f"Original_image/{idx}", inputs[0].squeeze(), epoch)
-        feats_pca = visualize_features([outputs.squeeze().permute([1, 2, 0]).detach().cpu().numpy()])[0]
+
+        feats = outputs.squeeze().permute([1, 2, 0]).detach().cpu().numpy()
+        feats_pca = visualize_features([feats])[0]
         self._writer.add_image(f"Features/{idx}", torch.from_numpy(feats_pca).permute([2, 0, 1]), epoch)
-        feats_pca[mask.cpu().numpy() < 1, :] = 0
-        self._writer.add_image(f"Features_masked/{idx}", torch.from_numpy(feats_pca).permute([2, 0, 1]), epoch)
+        feats_pca_mask = visualize_features([feats[mask.cpu().numpy() > 0.5, :]])[0]
+        output_mask = np.zeros_like(feats_pca)
+        output_mask[mask.cpu().numpy() > 0.5, :] = np.squeeze(feats_pca_mask)
+        self._writer.add_image(f"Features_masked/{idx}", torch.from_numpy(output_mask).permute([2, 0, 1]), epoch)

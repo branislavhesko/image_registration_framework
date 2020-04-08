@@ -46,7 +46,7 @@ class Configuration(ModelConfiguration, Paths, LossConfiguration):
     EPOCHS = 30
     NEGATIVE_LOSS_COEF = 1.
     NUM_WORKERS = 0
-    SHUFFLE = {Mode.TRAIN: False, Mode.VALIDATE: False}
+    SHUFFLE = {Mode.TRAIN: True, Mode.VALIDATE: True}
     USE_CUDA = True
     VALIDATION_FREQUENCY = 5
     TRAIN_VISUALIZATION_FREQUENCY = 10
@@ -67,4 +67,4 @@ class ArteryVeinConfiguration(Configuration):
     PATH_TO_IMAGES_FIRST = "./data/vessel_artery_dataset/"
     NUM_NEG_PAIRS = 4096
     NUM_POS_PAIRS = 4096
-    NEG_LOSS_CONSTANT = 3.
+    NEG_LOSS_CONSTANT = 1.
