@@ -1,3 +1,5 @@
+import logging
+
 import numpy as np
 import torch
 import torch.nn.functional as functional
@@ -84,6 +86,7 @@ class GeneralVesselLoss(torch.nn.Module):
 
     def __init__(self, config):
         super().__init__()
+        self._logger = logging.getLogger(__name__)
         self._config = config
 
     @staticmethod
@@ -92,7 +95,7 @@ class GeneralVesselLoss(torch.nn.Module):
 
     @staticmethod
     def distance(tensor1: torch.Tensor, tensor2: torch.Tensor, dim=0):
-        return torch.sqrt(torch.sum(torch.abs(tensor1 - tensor2), dim=dim) + 1e-7)
+        return torch.sqrt(torch.sum(torch.pow(tensor1 - tensor2, 2), dim=dim) + 1e-7)
 
     @staticmethod
     def get_random_choices(features_flat, vessel_mask, num_pairs):
@@ -188,7 +191,6 @@ class PositiveArteryVeinLoss(GeneralVesselLoss):
         vein_mask = self._normalize_probability(mask_flat == 1)
         artery_mask = self._normalize_probability(mask_flat == 2)
         background_mask = self._normalize_probability(mask_flat == 0)
-        print(f"veins: {np.sum(mask_flat == 1)}, arteries: {np.sum(mask_flat == 2)}")
         background_choice1 = np.random.choice(features_flat.shape[-1], self._config.NUM_POS_PAIRS, p=background_mask)
         background_choice2 = np.random.choice(features_flat.shape[-1], self._config.NUM_POS_PAIRS, p=background_mask)
 
@@ -196,9 +198,23 @@ class PositiveArteryVeinLoss(GeneralVesselLoss):
         vein_choice2 = np.random.choice(features_flat.shape[-1], self._config.NUM_POS_PAIRS, p=vein_mask)
         artery_choice1 = np.random.choice(features_flat.shape[-1], self._config.NUM_POS_PAIRS, p=artery_mask)
         artery_choice2 = np.random.choice(features_flat.shape[-1], self._config.NUM_POS_PAIRS, p=artery_mask)
-        return self.distance(features_flat[..., vein_choice1], features_flat[..., vein_choice2]) + \
-            self.distance(features_flat[..., artery_choice1], features_flat[..., artery_choice2]) + \
-            self.distance(features_flat[..., background_choice1], features_flat[..., background_choice2])
+
+        distance_vein = self.distance(features_flat[..., vein_choice1], features_flat[..., vein_choice2])
+        distance_artery = self.distance(features_flat[..., artery_choice1], features_flat[..., artery_choice2])
+        distance_background = self.distance(
+            features_flat[..., background_choice1], features_flat[..., background_choice2])
+
+        self._logger.info(
+            "Positive artery-vein loss, distance vein, min, max, mean: {:.3f}, {:.3f}, {:.3f}".format(
+                distance_vein.min().item(), distance_vein.max().item(), distance_vein.mean().item()))
+        self._logger.info(
+            "Positive artery-vein loss, distance artery: min, max, mean: {:.3f}, {:.3f}, {:.3f}".format(
+                distance_artery.min().item(), distance_artery.max().item(), distance_artery.mean().item()))
+        self._logger.info(
+            "Positive artery-vein loss, distance background: min, max, mean: {:.3f}, {:.3f}, {:.3f}".format(
+                distance_background.min().item(), distance_background.max().item(), distance_background.mean().item()))
+
+        return distance_artery + distance_background + distance_vein
 
 
 class NegativeArteryVeinLoss(GeneralVesselLoss):
@@ -213,6 +229,23 @@ class NegativeArteryVeinLoss(GeneralVesselLoss):
         background_choice = np.random.choice(features_flat.shape[-1], self._config.NUM_POS_PAIRS, p=background_mask)
         vein_choice = np.random.choice(features_flat.shape[-1], self._config.NUM_POS_PAIRS, p=vein_mask)
         artery_choice = np.random.choice(features_flat.shape[-1], self._config.NUM_POS_PAIRS, p=artery_mask)
-        return self.distance(features_flat[..., background_choice], features_flat[..., vein_choice]) + \
-            self.distance(features_flat[..., vein_choice], features_flat[..., artery_choice]) + \
-            self.distance(features_flat[..., background_choice], features_flat[..., artery_choice])
+
+        distance_background_vein = self.distance(features_flat[..., background_choice], features_flat[..., vein_choice])
+        distance_vein_artery = self.distance(features_flat[..., vein_choice], features_flat[..., artery_choice])
+        distance_background_artery = self.distance(
+            features_flat[..., background_choice], features_flat[..., artery_choice])
+
+        self._logger.info(
+            "Negative artery-vein loss, distance vein-background: min, max, mean: {:.3f}, {:.3f}, {:.3f}".format(
+                distance_background_vein.min().item(), distance_background_vein.max().item(),
+                distance_background_vein.mean().item()))
+        self._logger.info(
+            "Negative artery-vein loss, distance artery-background: min, max, mean: {:.3f}, {:.3f}, {:.3f}".format(
+                distance_background_artery.min().item(), distance_background_artery.max().item(),
+                distance_background_artery.mean().item()))
+        self._logger.info(
+            "Negative artery-vein loss, distance vein-artery: min, max, mean: {:.3f}, {:.3f}, {:.3f}".format(
+                distance_vein_artery.min().item(), distance_vein_artery.max().item(),
+                distance_vein_artery.mean().item()))
+
+        return distance_background_artery + distance_background_vein + distance_vein_artery

@@ -180,7 +180,7 @@ class ResUNet2(nn.Module):
                                                 stride=1, padding=0, dilation=1, bias=False),
                                       nn.ReLU(inplace=True)])
 
-    self.final = nn.Conv2d(in_channels=TR_CHANNELS[1], out_channels=TR_CHANNELS[1], kernel_size=1,
+    self.final = nn.Conv2d(in_channels=TR_CHANNELS[1], out_channels=out_channels, kernel_size=1,
                            stride=1, padding=0, dilation=1, bias=True)
 
     self.weight_initialization()
