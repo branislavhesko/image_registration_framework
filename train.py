@@ -28,7 +28,7 @@ class GeneralTrainer:
             self._model.parameters(), momentum=self._cfg.MOMENTUM, lr=self._cfg.INITIAL_LR,
             weight_decay=self._cfg.WEIGHT_DECAY, nesterov=True)
         self._lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(
-            optimizer=self._optimizer, gamma=self._cfg.WEIGHT_DECAY)
+            optimizer=self._optimizer, gamma=self._cfg.LR_DECAY)
         self._timer = Timer()
         self._data_loaders = get_data_loaders(self._cfg.DATASET, cfg, modes=self._cfg.MODES)
         self._loss = TotalVesselLoss(cfg)
