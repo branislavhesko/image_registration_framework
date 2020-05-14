@@ -210,8 +210,10 @@ class PositiveArteryVeinLoss(GeneralVesselLoss):
         artery_choice1 = np.random.choice(features_flat.shape[-1], self._config.NUM_POS_PAIRS, p=artery_mask)
         artery_choice2 = np.random.choice(features_flat.shape[-1], self._config.NUM_POS_PAIRS, p=artery_mask)
 
-        distance_vein = self.distance(features_flat[..., vein_choice1], features_flat[..., vein_choice2])
-        distance_artery = self.distance(features_flat[..., artery_choice1], features_flat[..., artery_choice2])
+        distance_vein = self.distance(features_flat[..., vein_choice1], features_flat[..., artery_choice2])
+        distance_vein2 = self.distance(features_flat[..., vein_choice1], features_flat[..., vein_choice2])
+        distance_artery2 = self.distance(features_flat[..., artery_choice1], features_flat[..., artery_choice2])
+        distance_artery = self.distance(features_flat[..., artery_choice1], features_flat[..., vein_choice2])
         distance_background = self.distance(
             features_flat[..., background_choice1], features_flat[..., background_choice2])
 
@@ -225,7 +227,7 @@ class PositiveArteryVeinLoss(GeneralVesselLoss):
             "Positive artery-vein loss, distance background: min, max, mean: {:.3f}, {:.3f}, {:.3f}".format(
                 distance_background.min().item(), distance_background.max().item(), distance_background.mean().item()))
 
-        return distance_artery + distance_background + distance_vein
+        return distance_artery + distance_background + distance_vein + distance_vein2 + distance_artery2
 
 
 class NegativeArteryVeinLoss(GeneralVesselLoss):
@@ -259,7 +261,7 @@ class NegativeArteryVeinLoss(GeneralVesselLoss):
                 distance_vein_artery.min().item(), distance_vein_artery.max().item(),
                 distance_vein_artery.mean().item()))
 
-        return distance_background_artery + distance_background_vein + distance_vein_artery
+        return distance_background_artery + distance_background_vein
 
 
 class NearVesselBackgroundLoss(GeneralVesselLoss):
@@ -271,7 +273,7 @@ class NearVesselBackgroundLoss(GeneralVesselLoss):
         mask = mask.cpu().squeeze().numpy() if type(mask) == torch.Tensor else mask
         mask_bw = np.zeros_like(mask).astype(np.uint8)
         mask_bw[mask > 0] = 255
-        mask_enlarged = cv2.dilate(mask_bw, np.ones((21, 21)))
+        mask_enlarged = cv2.dilate(mask_bw, np.ones((9, 9)))
         background_mask = mask_enlarged - mask_bw
         mask_flat = mask.flatten()
         background_mask = background_mask / np.sum(background_mask)
@@ -282,7 +284,7 @@ class NearVesselBackgroundLoss(GeneralVesselLoss):
                                                                                 features_flat, vein_mask)
         distance_background_artery, distance_background_vein, \
             distance_vein_artery = self._get_distances(artery_choice, background_choice, features_flat, vein_choice)
-        return distance_background_artery + distance_vein_artery + distance_background_vein
+        return distance_background_artery + distance_background_vein
 
     def _get_random_choice(self, artery_mask, background_mask, features_flat, vein_mask):
         background_choice = np.random.choice(features_flat.shape[-1], self._config.NUM_NEG_PAIRS, p=background_mask)

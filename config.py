@@ -25,8 +25,8 @@ class ModelConfiguration:
     LR_DECAY = 0.97
     MODEL = ResUNetBN2C
     MOMENTUM = 0.95
-    NORMALIZE_FEATURES = True
-    OUT_FEATURES = 64
+    NORMALIZE_FEATURES = False
+    OUT_FEATURES = 32
     WEIGHT_DECAY = 1e-4
 
 

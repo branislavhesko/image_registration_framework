@@ -1,6 +1,6 @@
 import numpy as np
+import torch
 from matplotlib import pyplot as plt
-from sklearn.decomposition import PCA
 
 from utils.transforms import unflatten
 
@@ -42,26 +42,22 @@ def visualize_points(image1: np.ndarray, image2: np.ndarray, points: np.ndarray)
     image2[pairs2[:, 0], pairs2[:, 1], :] = np.array((0, 255, 0))
     return image1, image2
 
-#
-# def visualize_features(features1: np.ndarray, features2: np.ndarray):
-#     pca = PCA(n_components=3)
-#     h, w, ch = features1.shape
-#     feats1_reduced = pca.fit_transform(features1.reshape(-1, ch))
-#     feats2_reduced = pca.fit_transform(features2.reshape(-1, ch))
-#     feats1_reduced_n = (feats1_reduced - np.amin(feats1_reduced)) / (np.amax(feats1_reduced) - np.amin(feats1_reduced))
-#     feats2_reduced_n = (feats2_reduced - np.amin(feats2_reduced)) / (np.amax(feats2_reduced) - np.amin(feats2_reduced))
-#     return torch.from_numpy(feats1_reduced_n.reshape(h, w, 3)).permute([2, 0, 1]), \
-#            torch.from_numpy(feats2_reduced_n.reshape(h, w, 3)).permute([2, 0, 1])
+
+def pca(tensor, n_components=3):
+    assert tensor.shape[1] < tensor.shape[0]
+    cov_mat = torch.matmul(tensor.transpose(0, 1), tensor) / (tensor.shape[0] - 1)
+    eigen = torch.eig(cov_mat, eigenvectors=True)
+    return torch.matmul(tensor, eigen[1][:, :n_components])
 
 
 def visualize_features(features_iterable):
-    pca = PCA(n_components=3)
 
     output = []
     for features in features_iterable:
         h, w, ch = features.shape if len(features.shape) == 3 else (-1, *features.shape)
-        features_reduces = pca.fit_transform(features.reshape(-1, ch))
-        features_reduced_normalized = (features_reduces - np.amin(features_reduces)) / (np.amax(features_reduces) - np.amin(features_reduces))
+        features_reduces = pca(torch.from_numpy(features.reshape(-1, ch)), 3).numpy()
+        features_reduced_normalized = (features_reduces - np.amin(features_reduces)) / (
+                np.amax(features_reduces) - np.amin(features_reduces))
         output.append(features_reduced_normalized.reshape(h, w, 3))
     return output
 
