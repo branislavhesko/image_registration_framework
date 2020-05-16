@@ -14,16 +14,34 @@ class HardestContrastiveLoss(torch.nn.Module):
         super().__init__()
         self._config = config
         self._positive = PositiveHardestContrastiveLoss(config)
-        self._negative = NegativeHardestContrastiveLoss(config)
+        self._negative = NegativeContrastiveLoss(config)
 
     def forward(self, inputs):
         feats1 = inputs[0]
         feats2 = inputs[1]
         pos_pairs = inputs[2]
 
-        positive_loss = self._positive(feats1, feats2, pos_pairs)
-        negative_loss = self._negative(feats1, feats2, pos_pairs)
-        return positive_loss + negative_loss
+        positive_loss = self._positive(self.make_flat(feats1), self.make_flat(feats2), pos_pairs)
+        negative_loss = self._negative(self.make_flat(feats1), self.make_flat(feats2), pos_pairs)
+        return positive_loss + torch.nn.functional.relu(self._config.NEGATIVE_LOSS_COEF - negative_loss)
+
+    @staticmethod
+    def make_flat(tensor: torch.Tensor):
+        return tensor.view(tensor.shape[-3], -1)
+
+
+class NegativeContrastiveLoss(torch.nn.Module):
+
+    def __init__(self, config):
+        super().__init__()
+        self._config = config
+
+    def forward(self, feats1, feats2, pos_pairs):
+        random_choice1 = np.random.choice(feats1.shape[-1], self._config.NUM_NEG_PAIRS)
+        random_choice2 = np.random.choice(feats2.shape[-1], self._config.NUM_NEG_PAIRS)
+        feats1_selected = feats1[:, random_choice1]
+        feats2_selected = feats2[:, random_choice2]
+        return torch.mean(torch.sqrt(torch.sum(torch.pow(feats1_selected - feats2_selected, 2), dim=0) + 1e-7))
 
 
 class PositiveHardestContrastiveLoss(torch.nn.Module):
@@ -33,9 +51,9 @@ class PositiveHardestContrastiveLoss(torch.nn.Module):
         self._config = config
 
     def forward(self, feats1, feats2, positive_pairs):
-        feats1_selected = feats1[0, :, 0]
-        feats2_selected = feats2[0, :, 1]
-        return torch.mean(torch.sqrt(torch.sum(torch.pow(feats1_selected - feats2_selected, 2), dim=0)))
+        feats1_selected = feats1[:, positive_pairs[0, :, 0]]
+        feats2_selected = feats2[:, positive_pairs[0, :, 1]]
+        return torch.mean(torch.sqrt(torch.sum(torch.pow(feats1_selected - feats2_selected, 2), dim=0) + 1e-7))
 
 
 class NegativeHardestContrastiveLoss(torch.nn.Module):
@@ -78,7 +96,7 @@ class NegativeHardestContrastiveLoss(torch.nn.Module):
                     mask = np.concatenate([mask, mask_new], axis=0)
                 idx += 1
 
-            negative_loss += -torch.mean(dist[negative_indices2, ])
+            negative_loss += torch.mean(dist[negative_indices2, ])
 
         return negative_loss / self.NUM_NEG_PAIRS
 

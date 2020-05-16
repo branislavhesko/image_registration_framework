@@ -30,10 +30,9 @@ class RetinaDatasetPop2(Dataset):
         second = np.array(Image.open(self._images_second[item]))
 
         # TODO: remove
-        first = cv2.resize(first, None, fx=0.5, fy=0.5)
-        second = cv2.resize(second, None, fx=0.5, fy=0.5)
+        first = cv2.resize(first, None, fx=0.25, fy=0.25)
+        second = cv2.cvtColor(cv2.resize(second, None, fx=0.25, fy=0.25), cv2.COLOR_GRAY2RGB)
         first, second = self._transform(first, second)
-        second = np.concatenate([second[:, :, np.newaxis]] * 3, axis=2)
         image_width = max(first.shape[1], second.shape[1])
         positive_pairs = self.find_positive_pairs(first, second, self._cfg.NUM_POS_PAIRS)
         positive_pairs = flatten(torch.from_numpy(np.array(positive_pairs)), image_width)
@@ -44,8 +43,8 @@ class RetinaDatasetPop2(Dataset):
         )
 
     def load(self):
-        images_first = sorted(glob.glob(os.path.join(self._cfg.PATH_TO_IMAGES_FIRST, "*." + self.EXTENSION_FIRST)))
-        images_second = sorted(glob.glob(os.path.join(self._cfg.PATH_TO_IMAGES_SECOND, "*." + self.EXTENSION_SECOND)))
+        images_second = sorted(glob.glob(os.path.join(self._cfg.PATH_TO_IMAGES_FIRST, "*." + self._cfg.EXTENSION_FIRST)))
+        images_first = sorted(glob.glob(os.path.join(self._cfg.PATH_TO_IMAGES_SECOND, "*." + self._cfg.EXTENSION_SECOND)))
 
         for first in images_first:
             basename = os.path.basename(first)[:-4]

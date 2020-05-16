@@ -13,9 +13,10 @@ class Paths:
     DATASET = "RETINA"
     CHECKPOINT_PATH = "./ckpt"
     PATH_TO_IMAGES_FIRST = "./data/retina_dataset/experimental"
-    PATH_TO_IMAGES_SECOND = "./data/retina_dataset/experimental"
+    PATH_TO_IMAGES_SECOND = "./data/retina_dataset/fundus"
     PATH_TO_MASKS = "./data/retina_dataset/experimental_segmentation"
     EXTENSION_FIRST = "tif"
+    EXTENSION_SECOND = "png"
     EXTENSION_MASK = "png"
 
 
@@ -25,14 +26,14 @@ class ModelConfiguration:
     LR_DECAY = 0.97
     MODEL = ResUNetBN2C
     MOMENTUM = 0.95
-    NORMALIZE_FEATURES = False
+    NORMALIZE_FEATURES = True
     OUT_FEATURES = 32
     WEIGHT_DECAY = 1e-4
 
 
 class LossConfiguration:
-    NUM_POS_PAIRS = 4096
-    NUM_NEG_PAIRS = 4096
+    NUM_POS_PAIRS = 2048
+    NUM_NEG_PAIRS = 2048
     PIXEL_LIMIT = 10
     NUM_NEG_INDICES_FOR_LOSS = 5
     NEGATIVE_LOSS_WEIGHT = -2
@@ -44,7 +45,7 @@ class Configuration(ModelConfiguration, Paths, LossConfiguration):
     BATCH_SIZE = {Mode.TRAIN: 1, Mode.VALIDATE: 1}
     DISTANCE_LIMIT = 10
     EPOCHS = 100
-    NEGATIVE_LOSS_COEF = 1.
+    NEGATIVE_LOSS_COEF = 2.
     NUM_WORKERS = 0
     SHUFFLE = {Mode.TRAIN: True, Mode.VALIDATE: True}
     USE_CUDA = True

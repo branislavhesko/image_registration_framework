@@ -8,7 +8,7 @@ from tqdm import tqdm
 
 from config import Configuration, Mode
 from dataloaders.data_loader import get_data_loaders
-from loss import ArteryVeinLoss, TotalVesselLoss
+from loss import ArteryVeinLoss, HardestContrastiveLoss
 from utils.timer import Timer
 from utils.visualization import visualize_features, visualize_closest_points
 
@@ -31,7 +31,7 @@ class GeneralTrainer:
             optimizer=self._optimizer, gamma=self._cfg.LR_DECAY)
         self._timer = Timer()
         self._data_loaders = get_data_loaders(self._cfg.DATASET, cfg, modes=self._cfg.MODES)
-        self._loss = TotalVesselLoss(cfg)
+        self._loss = HardestContrastiveLoss(cfg)
 
     def train(self):
         self._model = self._model.cuda() if self._cfg.USE_CUDA else self._model
@@ -98,7 +98,7 @@ class RegistrationTrainer(GeneralTrainer):
     def calculate_loss(self, outputs, inputs):
         return self._loss((outputs[0], outputs[1], inputs[2]))
 
-    def visualize(self, inputs, outputs, loss, idx, idx_total):
+    def visualize(self, inputs, outputs, loss, idx, idx_total, epoch=None):
         self._writer.add_scalar("Mean/feats1", outputs[0].detach().cpu().mean(), idx_total)
         self._writer.add_scalar("Mean/feats2", outputs[1].detach().cpu().mean(), idx_total)
 
@@ -107,8 +107,8 @@ class RegistrationTrainer(GeneralTrainer):
             feats1_reduced, feats2_reduced = visualize_features([
                 outputs[0].squeeze().permute([1, 2, 0]).detach().cpu().numpy(),
                 outputs[1].squeeze().permute([1, 2, 0]).detach().cpu().numpy()])
-            self._writer.add_image("Features1", feats1_reduced, idx)
-            self._writer.add_image("Features2", feats2_reduced, idx)
+            self._writer.add_image("Features1", torch.from_numpy(feats1_reduced).permute([2, 0, 1]), idx)
+            self._writer.add_image("Features2", torch.from_numpy(feats2_reduced).permute([2, 0, 1]), idx)
             self._writer.add_image("Image1", inputs[0].squeeze(), idx)
             self._writer.add_image("Image2", inputs[1].squeeze(), idx)
             self._writer.add_figure("Matches", visualize_closest_points(
