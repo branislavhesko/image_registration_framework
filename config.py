@@ -43,7 +43,7 @@ class Configuration(ModelConfiguration, Paths, LossConfiguration):
 
     BATCH_SIZE = {Mode.TRAIN: 1, Mode.VALIDATE: 1}
     DISTANCE_LIMIT = 10
-    EPOCHS = 30
+    EPOCHS = 100
     NEGATIVE_LOSS_COEF = 1.
     NUM_WORKERS = 0
     SHUFFLE = {Mode.TRAIN: True, Mode.VALIDATE: True}
@@ -67,4 +67,4 @@ class ArteryVeinConfiguration(Configuration):
     PATH_TO_IMAGES_FIRST = "./data/vessel_artery_dataset/"
     NUM_NEG_PAIRS = 4096
     NUM_POS_PAIRS = 4096
-    NEG_LOSS_CONSTANT = 1.
+    NEG_LOSS_CONSTANT = 2.
