@@ -3,10 +3,12 @@ from typing import List
 from torch.utils.data import DataLoader
 
 from config import Configuration, Mode
+from dataloaders.avr_dataset import AVRDataset
 from dataloaders.dataset import ArteryVeinDataset, RetinaDatasetPop2, VesselDataset
 
 available_datasets = {
     "ARTERY_VEIN": ArteryVeinDataset,
+    "AVR_DATASET": AVRDataset,
     "RETINA": RetinaDatasetPop2,
     "VESSEL": VesselDataset
 }

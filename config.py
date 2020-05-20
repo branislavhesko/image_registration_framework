@@ -69,3 +69,7 @@ class ArteryVeinConfiguration(Configuration):
     NUM_NEG_PAIRS = 4096
     NUM_POS_PAIRS = 4096
     NEG_LOSS_CONSTANT = 2.
+
+
+class AVRConfiguration(ArteryVeinConfiguration):
+    pass
