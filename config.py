@@ -26,7 +26,7 @@ class ModelConfiguration:
     LR_DECAY = 0.97
     MODEL = ResUNetBN2C
     MOMENTUM = 0.95
-    NORMALIZE_FEATURES = True
+    NORMALIZE_FEATURES = False
     OUT_FEATURES = 32
     WEIGHT_DECAY = 1e-4
 
@@ -72,4 +72,12 @@ class ArteryVeinConfiguration(Configuration):
 
 
 class AVRConfiguration(ArteryVeinConfiguration):
-    pass
+    DATASET = "AVR_DATASET"
+    PATH_TO_IMAGES_FIRST = "./data/AVR/org/"
+    PATH_TO_MASKS = "./data/AVR/AV_GT_INSPIRE-AVR/"
+    EXTENSION_FIRST = "jpg"
+    EXTENSION_MASK = "tif"
+    NORMALIZE_FEATURES = False
+    SIZE = (566, 512)
+    NEG_LOSS_CONSTANT = 3.
+    NEGATIVE_LOSS_COEF = 2.

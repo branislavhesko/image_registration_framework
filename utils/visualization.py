@@ -56,8 +56,8 @@ def visualize_features(features_iterable):
     for features in features_iterable:
         h, w, ch = features.shape if len(features.shape) == 3 else (-1, *features.shape)
         features_reduces = pca(torch.from_numpy(features.reshape(-1, ch)), 3).numpy()
-        features_reduced_normalized = (features_reduces - np.amin(features_reduces)) / (
-                np.amax(features_reduces) - np.amin(features_reduces))
+        features_reduced_normalized = (features_reduces - np.amin(features_reduces, axis=0)) / (
+                np.amax(features_reduces, axis=0) - np.amin(features_reduces, axis=0))
         output.append(features_reduced_normalized.reshape(h, w, 3))
     return output
 

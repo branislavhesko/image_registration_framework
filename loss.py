@@ -286,7 +286,7 @@ class NearVesselBackgroundLoss(GeneralVesselLoss):
     def forward(self, features_flat, mask):
         mask = mask.cpu().squeeze().numpy() if type(mask) == torch.Tensor else mask
         mask_bw = np.zeros_like(mask).astype(np.uint8)
-        mask_bw[mask > 0] = 255
+        mask_bw[(mask > 0) & (mask < 2.5)] = 255
         mask_enlarged = cv2.dilate(mask_bw, np.ones((9, 9)))
         background_mask = mask_enlarged - mask_bw
         mask_flat = mask.flatten()

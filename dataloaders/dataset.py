@@ -71,7 +71,8 @@ class VesselDataset(Dataset):
 
     def load(self):
         self.images = sorted(glob.glob(os.path.join(self._cfg.PATH_TO_IMAGES_FIRST, "*." + self._cfg.EXTENSION_FIRST)))
-        self.masks = sorted(glob.glob(os.path.join(self._cfg.PATH_TO_MASKS, "*." + self._cfg.EXTENSION_MASK)))
+        self.masks = sorted(glob.glob(os.path.join(
+            self._cfg.PATH_TO_MASKS, "*." + self._cfg.EXTENSION_MASK)), key=lambda x: x.split("_"))
         assert len(self.images) == len(self.masks)
 
     def __len__(self):
