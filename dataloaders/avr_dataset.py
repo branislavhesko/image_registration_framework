@@ -19,7 +19,8 @@ class AVRDataset(VesselDataset):
         image, mask = [cv2.resize(i, self._cfg.SIZE, interpolation=cv2.INTER_NEAREST) for i in [image, mask]]
         mask = self._process_mask(mask)
         mask[np.mean(image, axis=2) < 0.01] = 3
-        return torch.from_numpy(image).permute([2, 0, 1]).float(), torch.from_numpy(mask).int()
+        image, mask = self._cfg.TRANSFORMS[self._mode](image, mask)
+        return image, mask
 
     def _process_mask(self, mask):
         new_mask = np.zeros(mask.shape[:2], dtype=np.int32)

@@ -15,9 +15,10 @@ class RetinaDatasetPop2(Dataset):
     EXTENSION_FIRST = "png"
     EXTENSION_SECOND = "tif"
 
-    def __init__(self, cfg: Configuration, transform=lambda x, y: (x, y)):
+    def __init__(self, cfg: Configuration, transform=lambda x, y: (x, y), mode=None):
         self._images_first = []
         self._images_second = []
+        self._mode = mode
         self._cfg = cfg
         self._transform = transform
         self.load()
@@ -29,7 +30,7 @@ class RetinaDatasetPop2(Dataset):
         first = np.array(Image.open(self._images_first[item]))
         second = np.array(Image.open(self._images_second[item]))
 
-        # TODO: remove
+        # TODO: replace by augmentations!
         first = cv2.resize(first, None, fx=0.25, fy=0.25)
         second = cv2.cvtColor(cv2.resize(second, None, fx=0.25, fy=0.25), cv2.COLOR_GRAY2RGB)
         first, second = self._transform(first, second)
@@ -63,8 +64,9 @@ class RetinaDatasetPop2(Dataset):
 
 class VesselDataset(Dataset):
 
-    def __init__(self, cfg: Configuration):
+    def __init__(self, cfg: Configuration, mode=None):
         self._cfg = cfg
+        self._mode = mode
         self.images = []
         self.masks = []
         self.load()

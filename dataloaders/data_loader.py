@@ -20,7 +20,7 @@ def get_dataset(dataset_name):
 
 
 def get_data_loader(dataset_name, cfg: Configuration, mode: Mode):
-    dataset = get_dataset(dataset_name)(cfg)
+    dataset = get_dataset(dataset_name)(cfg, mode)
     data_loader = DataLoader(dataset, batch_size=cfg.BATCH_SIZE[mode],
                              shuffle=cfg.SHUFFLE[mode], num_workers=cfg.NUM_WORKERS)
     return data_loader

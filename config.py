@@ -1,5 +1,6 @@
 from enum import auto, Enum
 
+from augmentations import ToTensor, Compose, RandomContrast, Rotate, Resize, RandomCenterCrop
 from model.resunet import ResUNetBN2C
 
 
@@ -51,6 +52,7 @@ class Configuration(ModelConfiguration, Paths, LossConfiguration):
     USE_CUDA = True
     VALIDATION_FREQUENCY = 5
     TRAIN_VISUALIZATION_FREQUENCY = 10
+    TRANSFORMS = None
 
 
 class PredictorConfiguration(Configuration):
@@ -81,3 +83,13 @@ class AVRConfiguration(ArteryVeinConfiguration):
     SIZE = (566, 512)
     NEG_LOSS_CONSTANT = 3.
     NEGATIVE_LOSS_COEF = 2.
+    TRANSFORMS = {
+        Mode.TRAIN: Compose([
+            RandomContrast(0.7),
+            RandomCenterCrop(0.7, 0.8),
+            Resize((566, 512)),
+            Rotate(0.7),
+            ToTensor()
+        ]),
+        Mode.VALIDATE: Compose([ToTensor()])
+    }
