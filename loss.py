@@ -113,8 +113,12 @@ class GeneralVesselLoss(torch.nn.Module):
         return tensor.view(tensor.shape[-3], -1)
 
     @staticmethod
-    def distance(tensor1: torch.Tensor, tensor2: torch.Tensor, dim=0):
+    def l2_loss(tensor1: torch.Tensor, tensor2: torch.Tensor, dim=0):
         return torch.sqrt(torch.sum(torch.pow(tensor1 - tensor2, 2), dim=dim) + 1e-7)
+
+    @staticmethod
+    def distance(tensor1: torch.Tensor, tensor2: torch.Tensor, dim=0):
+        return torch.nn.functional.smooth_l1_loss(tensor1, tensor2)
 
     @staticmethod
     def get_random_choices(features_flat, vessel_mask, num_pairs):

@@ -53,6 +53,7 @@ class Configuration(ModelConfiguration, Paths, LossConfiguration):
     VALIDATION_FREQUENCY = 5
     TRAIN_VISUALIZATION_FREQUENCY = 10
     TRANSFORMS = None
+    NUM_CLASSES = None
 
 
 class PredictorConfiguration(Configuration):
@@ -75,19 +76,19 @@ class ArteryVeinConfiguration(Configuration):
 
 class AVRConfiguration(ArteryVeinConfiguration):
     DATASET = "AVR_DATASET"
-    PATH_TO_IMAGES_FIRST = "./data/AVR/org/"
-    PATH_TO_MASKS = "./data/AVR/AV_GT_INSPIRE-AVR/"
+    PATH_TO_IMAGES_FIRST = "/home/brani/STORAGE/DATA/AVR/org/"
+    PATH_TO_MASKS = "/home/brani/STORAGE/DATA/AVR/AV_GT_INSPIRE-AVR/"
     EXTENSION_FIRST = "jpg"
     EXTENSION_MASK = "tif"
     NORMALIZE_FEATURES = False
-    SIZE = (566, 512)
+    SIZE = (512, 512)
     NEG_LOSS_CONSTANT = 3.
     NEGATIVE_LOSS_COEF = 2.
     TRANSFORMS = {
         Mode.TRAIN: Compose([
             RandomContrast(0.7),
             RandomCenterCrop(0.7, 0.8),
-            Resize((566, 512)),
+            Resize((512, 512)),
             Rotate(0.7),
             ToTensor()
         ]),
