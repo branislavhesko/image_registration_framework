@@ -1,6 +1,7 @@
 import os
 from abc import abstractmethod
 
+from matplotlib import pyplot as plt
 import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
@@ -22,8 +23,7 @@ class GeneralTrainer:
     def __init__(self, cfg: Configuration):
         self._cfg = cfg
         self._writer = SummaryWriter()
-        self._model = self._cfg.MODEL(in_channels=self._cfg.IN_CHANNELS, out_channels=self._cfg.OUT_FEATURES,
-                                      normalize_feature=self._cfg.NORMALIZE_FEATURES)
+        self._model = self._cfg.MODEL(self._cfg)
         self._optimizer = torch.optim.SGD(
             self._model.parameters(), momentum=self._cfg.MOMENTUM, lr=self._cfg.INITIAL_LR,
             weight_decay=self._cfg.WEIGHT_DECAY, nesterov=True)
@@ -172,3 +172,31 @@ class VeinArteryTrainer(GeneralTrainer):
         output_mask = np.zeros_like(feats_pca)
         output_mask[mask.cpu().numpy() > 0.5, :] = np.squeeze(feats_pca_mask)
         self._writer.add_image(f"Features_masked/{idx}", torch.from_numpy(output_mask).permute([2, 0, 1]), epoch)
+
+
+class SegmentationTrainer(VeinArteryTrainer):
+    def __init__(self, config):
+        super().__init__(config)
+        self._seg_loss = torch.nn.CrossEntropyLoss()
+
+    def calculate_loss(self, outputs, inputs):
+        feats, segs = outputs
+        image, mask = inputs
+        label = (mask > 0).long()
+        segmentation_loss = self._seg_loss(segs, label)
+        feature_loss = self._loss(feats, mask)
+        print(segmentation_loss)
+        return 10 * segmentation_loss + feature_loss
+
+    def visualize(self, inputs, outputs, loss, idx, idx_total, epoch=0):
+        feats, segs = outputs
+        super().visualize(inputs, feats, loss, idx, idx_total, epoch)
+        output_mask = torch.argmax(segs.squeeze(), 0).unsqueeze(0)
+        output_mask = torch.cat([output_mask, torch.zeros_like(output_mask), torch.zeros_like(output_mask)], 0)
+        self._writer.add_image(f"Segmentation/{idx}", output_mask, epoch)
+        fig = plt.figure(1, figsize=(20, 10), dpi=100)
+        plt.subplot(1, 2, 1)
+        plt.imshow(segs.squeeze()[0, :, :].cpu().detach().numpy())
+        plt.subplot(1, 2, 2)
+        plt.imshow(segs.squeeze()[1, :, :].cpu().detach().numpy())
+        self._writer.add_figure(f"PredictionMaps/{idx}", fig, epoch)

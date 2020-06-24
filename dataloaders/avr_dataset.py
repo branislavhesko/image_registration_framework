@@ -18,9 +18,9 @@ class AVRDataset(VesselDataset):
         mask = cv2.dilate(mask, np.ones((5, 5)))
         image, mask = [cv2.resize(i, self._cfg.SIZE, interpolation=cv2.INTER_NEAREST) for i in [image, mask]]
         mask = self._process_mask(mask)
-        mask[np.mean(image, axis=2) < 0.01] = 3
+        mask[np.mean(image, axis=2) < 0.01] = 0
         image, mask = self._cfg.TRANSFORMS[self._mode](image, mask)
-        return image, mask
+        return image, mask.long()
 
     def _process_mask(self, mask):
         new_mask = np.zeros(mask.shape[:2], dtype=np.int32)

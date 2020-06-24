@@ -2,6 +2,7 @@ from enum import auto, Enum
 
 from augmentations import ToTensor, Compose, RandomContrast, Rotate, Resize, RandomCenterCrop
 from model.resunet import ResUNetBN2C
+from model.segfeature_net import SegFeatureNet
 
 
 class Mode(Enum):
@@ -94,3 +95,8 @@ class AVRConfiguration(ArteryVeinConfiguration):
         ]),
         Mode.VALIDATE: Compose([ToTensor()])
     }
+
+
+class SegmentationConfiguration(AVRConfiguration):
+    NUM_CLASSES = 2
+    MODEL = SegFeatureNet
