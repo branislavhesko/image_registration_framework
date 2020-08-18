@@ -1,6 +1,7 @@
 import os
 from abc import abstractmethod
 
+import cv2
 from matplotlib import pyplot as plt
 import numpy as np
 import torch
@@ -191,6 +192,8 @@ class SegmentationTrainer(VeinArteryTrainer):
     def visualize(self, inputs, outputs, loss, idx, idx_total, epoch=0):
         feats, segs = outputs
         super().visualize(inputs, feats, loss, idx, idx_total, epoch)
+        if idx_total % 90 == 0:
+            print(idx_total)
         output_mask = torch.argmax(segs.squeeze(), 0).unsqueeze(0)
         output_mask = torch.cat([output_mask, torch.zeros_like(output_mask), torch.zeros_like(output_mask)], 0)
         self._writer.add_image(f"Segmentation/{idx}", output_mask, epoch)

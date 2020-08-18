@@ -10,9 +10,6 @@ class SegmentationBlock(torch.nn.Module):
 
     def _get_block(self, in_channels, out_channels):
         block = torch.nn.Sequential(*[
-            torch.nn.Conv2d(in_channels=in_channels, out_channels=in_channels, kernel_size=3, padding=1),
-            torch.nn.BatchNorm2d(in_channels),
-            torch.nn.ReLU(inplace=True),
             torch.nn.Conv2d(in_channels=in_channels, out_channels=out_channels, kernel_size=3, padding=1),
             torch.nn.BatchNorm2d(out_channels),
             torch.nn.ReLU(inplace=True),
@@ -21,10 +18,10 @@ class SegmentationBlock(torch.nn.Module):
 
     def _get_final_block(self, in_channels, num_classes):
         final = torch.nn.Sequential(*[
-            torch.nn.Conv2d(in_channels=in_channels, out_channels=in_channels, kernel_size=3, padding=1),
+            torch.nn.Conv2d(in_channels=in_channels, out_channels=in_channels, kernel_size=3, padding=1, bias=False),
             torch.nn.BatchNorm2d(in_channels),
             torch.nn.ReLU(inplace=True),
-            torch.nn.Conv2d(in_channels=in_channels, out_channels=num_classes, kernel_size=1)
+            torch.nn.Conv2d(in_channels=in_channels, out_channels=num_classes, kernel_size=1, bias=False)
         ])
         return final
 
