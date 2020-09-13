@@ -8,12 +8,12 @@ import torch.nn.functional as functional
 from config import ArteryVeinConfiguration, LossConfiguration
 
 
-class HardestContrastiveLoss(torch.nn.Module):
+class ContrastiveLoss(torch.nn.Module):
 
     def __init__(self, config):
         super().__init__()
         self._config = config
-        self._positive = PositiveHardestContrastiveLoss(config)
+        self._positive = PositiveContrastiveLoss(config)
         self._negative = NegativeContrastiveLoss(config)
 
     def forward(self, inputs):
@@ -44,7 +44,7 @@ class NegativeContrastiveLoss(torch.nn.Module):
         return torch.mean(torch.sqrt(torch.sum(torch.pow(feats1_selected - feats2_selected, 2), dim=0) + 1e-7))
 
 
-class PositiveHardestContrastiveLoss(torch.nn.Module):
+class PositiveContrastiveLoss(torch.nn.Module):
 
     def __init__(self, config):
         super().__init__()
@@ -114,7 +114,7 @@ class GeneralVesselLoss(torch.nn.Module):
 
     @staticmethod
     def l2_loss(tensor1: torch.Tensor, tensor2: torch.Tensor, dim=0):
-        return torch.sqrt(torch.sum(torch.pow(tensor1 - tensor2, 2), dim=dim) + 1e-7)
+        return torch.sqrt(torch.sum(torch.pow(tensor1 - tensor2, 2), dim=dim))
 
     @staticmethod
     def distance(tensor1: torch.Tensor, tensor2: torch.Tensor, dim=0):
@@ -175,26 +175,6 @@ class TotalVesselLoss(GeneralVesselLoss):
         negative_loss = self._neg_loss(features_flat, vessel_mask_flat)
         print("Negative loss: {}".format(torch.max(negative_loss)))
         return self._config.NEGATIVE_LOSS_WEIGHT * torch.mean(negative_loss) + torch.mean(positive_loss)
-
-
-class HardestNegativeVesselLoss(GeneralVesselLoss):
-
-    def forward(self, features_flat, vessel_mask_flat):
-        pass
-
-
-class HardestPositiveVesseloss(GeneralVesselLoss):
-
-    def forward(self, features_flat, vessel_mask_flat):
-        pass
-
-    @staticmethod
-    def get_random_hardest_choices(features_flat, mask, num_pairs):
-        random_choice = np.random.choice(features_flat.shape[-1], num_pairs, p=mask / np.sum(mask))
-        indices = []
-        for choice in random_choice:
-            indices.append(torch.argmax(torch.abs(features_flat - features_flat[choice]) * (-1) * mask))
-        return random_choice, indices
 
 
 class ArteryVeinLoss(GeneralVesselLoss):

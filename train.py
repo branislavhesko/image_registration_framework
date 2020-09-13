@@ -10,7 +10,7 @@ from tqdm import tqdm
 
 from config import Configuration, Mode
 from dataloaders.data_loader import get_data_loaders
-from loss import ArteryVeinLoss, HardestContrastiveLoss
+from loss import ArteryVeinLoss, ContrastiveLoss
 from utils.timer import Timer
 from utils.visualization import visualize_features, visualize_closest_points
 
@@ -24,7 +24,8 @@ class GeneralTrainer:
     def __init__(self, cfg: Configuration):
         self._cfg = cfg
         self._writer = SummaryWriter()
-        self._model = self._cfg.MODEL(self._cfg)
+        self._device = "cuda" if self._cfg.USE_CUDA else "cpu"
+        self._model = self._cfg.MODEL(self._cfg).to(self._device)
         self._optimizer = torch.optim.SGD(
             self._model.parameters(), momentum=self._cfg.MOMENTUM, lr=self._cfg.INITIAL_LR,
             weight_decay=self._cfg.WEIGHT_DECAY, nesterov=True)
@@ -32,7 +33,8 @@ class GeneralTrainer:
             optimizer=self._optimizer, gamma=self._cfg.LR_DECAY)
         self._timer = Timer()
         self._data_loaders = get_data_loaders(self._cfg.DATASET, cfg, modes=self._cfg.MODES)
-        self._loss = HardestContrastiveLoss(cfg)
+        self._loss = ContrastiveLoss(cfg)
+        self.load_checkpoint(os.path.join(self._cfg.CHECKPOINT_PATH, "skuska.pth"))
 
     def train(self):
         self._model = self._model.cuda() if self._cfg.USE_CUDA else self._model
@@ -42,6 +44,9 @@ class GeneralTrainer:
             self.train_single_epoch(epoch)
             self._lr_scheduler.step(epoch=epoch)
             self._timer.toc()
+
+            if epoch % 10 == 0:
+                self.save_checkpoint("skuska.pth")
 
     def train_single_epoch(self, epoch):
         self._model.train()
@@ -75,8 +80,12 @@ class GeneralTrainer:
     def validate(self):
         pass
 
-    def load_checkpoint(self):
-        pass
+    def load_checkpoint(self, path):
+        state_dict = torch.load(path)
+        if "optimizer" in state_dict:
+            self._optimizer.load_state_dict(state_dict["optimizer"])
+        self._model.load_state_dict(state_dict["model"])
+        self._model = self._model.cuda() if self._cfg.USE_CUDA else self._model
 
     def save_checkpoint(self, file_name):
         state_dict = {
@@ -86,7 +95,7 @@ class GeneralTrainer:
         }
         if not os.path.exists(self._cfg.CHECKPOINT_PATH):
             os.makedirs(self._cfg.CHECKPOINT_PATH)
-        torch.save(state_dict, os.path.join(self._cfg.CHECKPOINT_PATH, file_name + ".pth"))
+        torch.save(state_dict, os.path.join(self._cfg.CHECKPOINT_PATH, file_name))
 
 
 class RegistrationTrainer(GeneralTrainer):
@@ -178,7 +187,7 @@ class VeinArteryTrainer(GeneralTrainer):
 class SegmentationTrainer(VeinArteryTrainer):
     def __init__(self, config):
         super().__init__(config)
-        self._seg_loss = torch.nn.CrossEntropyLoss()
+        self._seg_loss = torch.nn.CrossEntropyLoss(weight=torch.tensor([0.2, 1.]).to(self._device))
 
     def calculate_loss(self, outputs, inputs):
         feats, segs = outputs
@@ -187,7 +196,7 @@ class SegmentationTrainer(VeinArteryTrainer):
         segmentation_loss = self._seg_loss(segs, label)
         feature_loss = self._loss(feats, mask)
         print(segmentation_loss)
-        return 10 * segmentation_loss + feature_loss
+        return segmentation_loss + feature_loss
 
     def visualize(self, inputs, outputs, loss, idx, idx_total, epoch=0):
         feats, segs = outputs
